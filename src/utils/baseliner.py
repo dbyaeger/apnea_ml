@@ -51,14 +51,21 @@ def set_baseline(data: np.ndarray, labels: np.ndarray, index: int,
         """
         assert baseline_type in ('quantile','min_max')
         
+        # Handle case where data is not one-dimensional through broadcasting
+        if len(data.shape) > 1:
+                labels = labels.reshape(-1,1)
+        
         if (index - (sampling_rate * baseline_length)) <= 0:
             baseline_data = data[0:int(sampling_rate * baseline_length)]
-            baseline = baseline_data[np.nonzero(baseline_data != 0) & (labels == 0)]
+            baseline_labels = labels[0:int(sampling_rate * baseline_length)]
+            baseline = baseline_data[(baseline_data != 0) & (baseline_labels == 0)]
+
             if len(baseline) == 0:
                 baseline = data[(data != 0) & (labels == 0)][:int(sampling_rate * baseline_length)]
         else:
             baseline_data = data[index - int(sampling_rate * baseline_length):index]
-            baseline = baseline_data[(np.nonzero(baseline_data != 0)) & (labels == 0)]
+            baseline_labels = labels[index - int(sampling_rate * baseline_length):index]
+            baseline = baseline_data[(baseline_data != 0) & (baseline_labels == 0)]
             if len(baseline) == 0:
                 baseline = data[(data != 0) & (labels == 0)]
         
@@ -67,7 +74,7 @@ def set_baseline(data: np.ndarray, labels: np.ndarray, index: int,
         if baseline_type == 'quantile':
             baseline = np.quantile(a=baseline,q=quantile,axis=0)
             assert baseline != 0, f'Baseline is equal to zero!'
-            return  (baseline,)
+            return (baseline,)
         
         elif baseline_type == 'min_max':
             b_min = np.quantile(a=baseline,q=0.05,axis=0)
@@ -117,13 +124,12 @@ def baseline(data: np.ndarray, labels: np.ndarray, sampling_rate: int = 10,
                                  baseline_type = baseline_type,
                                  quantile=quantile,
                                  baseline_length=baseline_length,
-                                 sampling_rate=sampling_rate,
-                                 step_size = step_size)
+                                 sampling_rate=sampling_rate)
         if baseline_type == 'quantile':
             out[index-step_size:index] = data[index-step_size:index]/baseline[0]
         elif baseline_type == 'min_max':
             # b_min is first entry, b_max is second entry
-            out[index-step_size:index] = (data[index-step_size:index - baseline[0])/(baseline[1]-baseline[0])            
+            out[index-step_size:index] = (data[index-step_size:index] - baseline[0])/(baseline[1]-baseline[0])            
     return out
 
 def fix_zeros(data: np.array):
