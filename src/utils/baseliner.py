@@ -8,8 +8,10 @@ Created on Wed Jan 15 14:16:35 2020
 import numpy as np
 from matplotlib import pyplot as plt
 
-def set_baseline(data: np.ndarray, index: int, baseline_length: int = 3, quantile: float = 0.5,
-                 sampling_rate: int = 10, step_size: int = 100) -> np.ndarray:
+def set_baseline(data: np.ndarray, labels: np.ndarray, index: int, 
+                 baseline_type: str = 'quantile',
+                 baseline_length: int = 3, quantile: float = 0.5,
+                 sampling_rate: int = 10) -> tuple:
         """ Calculates the baseline of an array given the index and baseline
         length (in seconds). Only considers non-zero vales when calculating the
         baseline.
@@ -21,37 +23,73 @@ def set_baseline(data: np.ndarray, index: int, baseline_length: int = 3, quantil
 
         Case 2: The index corresponds to a time of more than the value of the
         baseline_length parameter. The baseline consists of the last baseline_length
-        worth of samples (i.e. baseline_length seconds, or f_s * p_baseline_length
+        worth of samples (i.e. baseline_length seconds, or sampling_rate * 
+        baseline_length
         samples).
+        
+        Inputs:
+            data: numpy array of data
+            labels: numpy array of targets. 0 is assumed to be non-event.
+            index: integer specifying current index in data
+            baseline_type: string specifying which type of baseline to calculate
+        
+        Parameters:
+            baseline length: length in seconds over which to calculate baseline.
+            quantile: which quantile to use if quanile mode is used.
+            sampling_rate: sampling_rate of data (and labels)
+        
+        Returns:
+            baseline, a tuple:
+                
+                if baseline_type is quantile: tuple contains value of quantile
+                
+                if baseline_type is min_max: first entry of tuple is 5th quantile
+                    of baseline data and second entry is 95th quantile of data.
+            
 
         Returns baseline
         """
-
+        assert baseline_type in ('quantile','min_max')
+        
         if (index - (sampling_rate * baseline_length)) <= 0:
             baseline_data = data[0:int(sampling_rate * baseline_length)]
-            baseline = baseline_data[np.nonzero(baseline_data != 0)]
+            baseline = baseline_data[np.nonzero(baseline_data != 0) & (labels == 0)]
             if len(baseline) == 0:
-                baseline = data[data != 0][:int(sampling_rate * baseline_length)]
+                baseline = data[(data != 0) & (labels == 0)][:int(sampling_rate * baseline_length)]
         else:
             baseline_data = data[index - int(sampling_rate * baseline_length):index]
-            baseline = baseline_data[np.nonzero(baseline_data != 0)]
+            baseline = baseline_data[(np.nonzero(baseline_data != 0)) & (labels == 0)]
             if len(baseline) == 0:
-                baseline = data[data != 0]
+                baseline = data[(data != 0) & (labels == 0)]
         
         assert len(baseline) > 0, f'Baseline has zero length!'
-        baseline = np.quantile(a=baseline,q=quantile,axis=0)
         
-        # Protect from division by zero
-        assert baseline != 0, f'Baseline is equal to zero!'
-        return  baseline
+        if baseline_type == 'quantile':
+            baseline = np.quantile(a=baseline,q=quantile,axis=0)
+            assert baseline != 0, f'Baseline is equal to zero!'
+            return  (baseline,)
+        
+        elif baseline_type == 'min_max':
+            b_min = np.quantile(a=baseline,q=0.05,axis=0)
+            b_max = np.quantile(a=baseline,q=0.95,axis=0)
+            baseline = (b_min,b_max)
+        
+        return baseline
+        
 
-def baseline(data: np.ndarray, sampling_rate: int = 10, quantile: float = 0.5,
-                  baseline_length: int = 120, step_size: int = 1,
-                  replace_zeros: bool = False) -> np.ndarray:
+def baseline(data: np.ndarray, labels: np.ndarray, sampling_rate: int = 10, 
+             quantile: float = 0.5, baseline_type: str = 'quantile',
+             baseline_length: int = 120, step_size: int = 1,
+             replace_zeros: bool = False) -> np.ndarray:
     """Baselines data, by default according to the previous two minutes of data.
     
     INPUTS:
         data: 1 or N-dimensional numpy array
+        
+        labels: 1-dimensional numpy array
+        
+        baseline_type: whether to use the quantile of the baseline period or
+            the min and max to adjust baseline.
         
     PARAMETERS:
         sampling rate: the sampling rate of the data
@@ -69,19 +107,23 @@ def baseline(data: np.ndarray, sampling_rate: int = 10, quantile: float = 0.5,
         baselined array
     
     """
-    
-    if replace_zeros:
-        data = fix_zeros(data)
+    assert baseline_type in ('quantile','min_max')
         
     out = np.empty(data.shape)
     for index in range(step_size,data.shape[0]+step_size,step_size):
-        baselined = set_baseline(data=data,
-                                                   index=index,
-                                                   quantile=quantile,
-                                                   baseline_length=baseline_length,
-                                                   sampling_rate=sampling_rate,
-                                                   step_size = step_size)
-        out[index-step_size:index] = data[index-step_size:index]/baselined
+        baseline = set_baseline(data=data, 
+                                 labels = labels,
+                                 index=index,
+                                 baseline_type = baseline_type,
+                                 quantile=quantile,
+                                 baseline_length=baseline_length,
+                                 sampling_rate=sampling_rate,
+                                 step_size = step_size)
+        if baseline_type == 'quantile':
+            out[index-step_size:index] = data[index-step_size:index]/baseline[0]
+        elif baseline_type == 'min_max':
+            # b_min is first entry, b_max is second entry
+            out[index-step_size:index] = (data[index-step_size:index - baseline[0])/(baseline[1]-baseline[0])            
     return out
 
 def fix_zeros(data: np.array):
