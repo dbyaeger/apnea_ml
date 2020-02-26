@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 def set_baseline(data: np.ndarray, labels: np.ndarray, index: int, 
-                 baseline_type: str = 'quantile',
+                 baseline_type: str = 'quantile', cut_offs: tuple = (0.01,0.99),
                  baseline_length: int = 3, quantile: float = 0.5,
                  sampling_rate: int = 10) -> tuple:
         """ Calculates the baseline of an array given the index and baseline
@@ -29,14 +29,22 @@ def set_baseline(data: np.ndarray, labels: np.ndarray, index: int,
         
         Inputs:
             data: numpy array of data
+            
             labels: numpy array of targets. 0 is assumed to be non-event.
+            
             index: integer specifying current index in data
+            
             baseline_type: string specifying which type of baseline to calculate
         
         Parameters:
             baseline length: length in seconds over which to calculate baseline.
+            
             quantile: which quantile to use if quanile mode is used.
+            
             sampling_rate: sampling_rate of data (and labels)
+            
+            cut_offs: the minimum and maximum to be used when performing min-max
+            scaling, in the format (min,max).
         
         Returns:
             baseline, a tuple:
@@ -49,7 +57,8 @@ def set_baseline(data: np.ndarray, labels: np.ndarray, index: int,
 
         Returns baseline
         """
-        assert baseline_type in ('quantile','min_max')
+        assert baseline_type in ('quantile','min_max'), "Baseline_type must be 'min_max' or 'quantile'!"
+        assert cut_offs[1] > cut_offs[0], "Minimum value must be less than maximum value!"
         
         # Handle case where data is not one-dimensional through broadcasting
         if len(data.shape) > 1:
@@ -77,8 +86,8 @@ def set_baseline(data: np.ndarray, labels: np.ndarray, index: int,
             return (baseline,)
         
         elif baseline_type == 'min_max':
-            b_min = np.quantile(a=baseline,q=0.05,axis=0)
-            b_max = np.quantile(a=baseline,q=0.95,axis=0)
+            b_min = np.quantile(a=baseline, q=cut_offs[0], axis=0)
+            b_max = np.quantile(a=baseline, q=cut_offs[1], axis=0)
             baseline = (b_min,b_max)
         
         return baseline
@@ -86,8 +95,8 @@ def set_baseline(data: np.ndarray, labels: np.ndarray, index: int,
 
 def baseline(data: np.ndarray, labels: np.ndarray, sampling_rate: int = 10, 
              quantile: float = 0.5, baseline_type: str = 'quantile',
-             baseline_length: int = 120, step_size: int = 1,
-             replace_zeros: bool = False) -> np.ndarray:
+             cut_offs: tuple = (0.01,0.99),
+             baseline_length: int = 120, step_size: int = 10) -> np.ndarray:
     """Baselines data, by default according to the previous two minutes of data.
     
     INPUTS:
@@ -102,6 +111,9 @@ def baseline(data: np.ndarray, labels: np.ndarray, sampling_rate: int = 10,
         sampling rate: the sampling rate of the data
         
         quantile: the quantile to use when calculating the baseline (e.g. 0.5 for median)
+        
+        cut_offs: the minimum and maximum to be used when performing min-max
+        scaling, in the format (min,max).
         
         baseline_length: the length of the baseline in seconds
         
@@ -167,8 +179,17 @@ def fix_zeros(data: np.array):
     assert np.all(out > 0), f"Output array contains values less than or equal to zero: \n{np.nonzero(out <= 0)}!"
     return out
         
-                
+def baseline_sine_wave():
+    "Test function to look at what min-max scaling a sine wave looks like"
+    # Create time from sine wave
+    fs = 10
+    time = np.arange(10000)*(1/fs)
+    y = np.sin(time)
     
+    baselined = baseline(data = y, labels = np.zeros(len(y)), baseline_type = 'min_max')
+    
+    plt.hist(baselined)
+    plt.title('Baselined Sine wave')
 
 def test_baseliner():
     "Plots data with and without baselining"
@@ -204,3 +225,6 @@ def test_baseliner():
     plt.subplot(414)
     plt.plot(base[:,1],label='First column baselined')
     plt.legend(loc='best')
+
+if __name__ == "__main__":
+    baseline_sine_wave()

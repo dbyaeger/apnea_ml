@@ -8,20 +8,19 @@ import numpy as np
 import pandas as pd
 from datetime import timedelta, datetime
 from collections import defaultdict, Counter
-from utils.dsp import design_filter, filter_and_resample, lowpass
+from src.utils.dsp import design_filter, filter_and_resample, lowpass
 from resampy import resample
-import more_itertools
 import openxdf
 from analysis import Analyzer2
-from utils.median_filter import MedianFilter
-from utils.open_xdf_helpers import (load_data, 
+from src.utils.median_filter import MedianFilter
+from src.utils.open_xdf_helpers import (load_data, 
                                     select_rem_epochs, 
                                     select_rswa_events, 
                                     get_cpap_start_epoch,
                                     get_notes,
                                     parse_notes)
-from utils.list_to_seq import convert_to_sequence
-from utils.baseliner import baseline, fix_zeros
+from src.utils.list_to_seq import convert_to_sequence
+from src.utils.baseliner import baseline
 from sklearn.preprocessing import Normalizer
 
 def run():
@@ -33,13 +32,13 @@ def run():
 class DataProcessorApnea:
 
     def __init__(self, input_path = '/Volumes/TOSHIBA EXT/training_data',
-                 output_path = '/Users/danielyaeger/Documents/raw_hr_no_median_filter',
+                 output_path = '/Users/danielyaeger/Documents/raw_baselined_v2',
                  channel_list = ['Abdomen','Chest','Airflow','SpO2','P-Flo','Snore', 'ECG'],
                  path_to_polysmith_db = '/Users/danielyaeger/Documents/Modules/sleep-research-ml/data/supplemental/Polysmith_DataBase_ML_forPhil.csv',
                  min_time_hours=4, min_rem_epochs=10, sampling_rate = 10, 
-                 replace_zeros = False, ecg_filter_upper = False,
+                 ecg_filter_upper = False,
                  ecg_filter_lower = False, ecg_lower_bound = 0.3, 
-                 ecg_upper_bound = 2, baseline = False, normalize = False,
+                 ecg_upper_bound = 2, baseline = True, normalize = False,
                  ID_list = None, hr = True):
         """
         Takes in xdf and nkamp files corresponding to one complete study and writes
@@ -65,9 +64,6 @@ class DataProcessorApnea:
                        
             ID_list: provide a list of IDs to limit data processing to the select
                 IDs found in the input_path.
-            
-            replace_zeros: whether to replace zero values in non-ecg signals
-                with last non-zero value.
             
             ecg_filter_upper: whether to apply median filter to rr peaks in ecg
                 signal exceeding ecg_upper_bound value.
@@ -110,7 +106,6 @@ class DataProcessorApnea:
         self.min_time_hours = min_time_hours
         self.min_rem_epochs = min_rem_epochs
         self.fs = sampling_rate
-        self.replace_zeros = replace_zeros
         self.ecg_filter_upper = ecg_filter_upper
         self.ecg_filter_lower = ecg_filter_lower
         self.ecg_lower_bound = ecg_lower_bound
@@ -221,11 +216,13 @@ class DataProcessorApnea:
                 sig = lowpass(sig.ravel(),cutoff = 3, fs = 200)
                 sig = resample(sig,200,10)
                 if self.baseline:
-                    sig = baseline(data=sig,sampling_rate=10,
-                                     quantile=0.5,
-                                     baseline_length=120,
-                                     step_size=10,
-                                     replace_zeros=False)
+                    sig = baseline(data=sig,
+                                   labels = self.apnea_hypoapnea_targets[ID],
+                                   baseline_type = 'min_max',
+                                   cut_offs = (0.05,0.95),
+                                   sampling_rate=10,
+                                   baseline_length=120,
+                                   step_size=10)
                 elif self.normalize:
                     print(f'\tshape of sig: {sig.shape}')
                     transformer = Normalizer().fit(sig.T.reshape(-1, 1))
@@ -238,12 +235,20 @@ class DataProcessorApnea:
                 sig = resample(sig.ravel(), sr_in, sr_out, axis=-1)
                 sig = sig*0.3663*0.001
                 sig = np.clip(a=sig, a_min = 0, a_max = None)
-                assert sig.shape == X[:,i].shape, "Shape mismatch!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-                X[:,i] = baseline(data=sig,sampling_rate=10,
-                                 quantile=0.95,
-                                 baseline_length=120,
-                                 step_size=10,
-                                 replace_zeros=self.replace_zeros)       
+                assert sig.shape == X[:,i].shape, f"Shape mismatch! Shape of signal: {sig.shape} and shape of slot: {X[:,i].shape}"
+                if self.baseline:
+                    X[:,i] = baseline(data=sig,
+                                     labels = self.apnea_hypoapnea_targets[ID],
+                                     baseline_type = 'quantile',
+                                     sampling_rate=10,
+                                     quantile=0.95,
+                                     baseline_length=120,
+                                     step_size=10)
+                elif self.normalize:
+                    transformer = Normalizer().fit(sig.T.reshape(-1, 1))
+                    sig =  transformer.transform(sig.T.reshape(-1, 1)).T
+                X[:,i] = sig
+                    
             elif c == 'ECG':
                 if self.hr == True:
                     ecg_sampling_rate = sig.shape[-1]
@@ -326,7 +331,15 @@ if __name__ == "__main__":
     #print('here!')
     sys.path.append('/Users/danielyaeger/Documents/Modules')
     sys.path.append('/Users/danielyaeger/Documents/Modules/sleep-research-ml/src')
+    ID_list = ['XAXVDJYND80Q4Q0',
+               'XAXVDJYND82F3BO',
+               'XAXVDJYND83LQ1F',
+               'XAXVDJYND82Q807',
+               'XAXVDJYND7ZN951',
+               'XAXVDJYND7WLVFB',
+               'XAXVDJYND7Q6JTK',
+               'XAXVDJYND7ZUIM2']
     #print(sys.path)
-    dg = DataProcessorApnea()
+    dg = DataProcessorApnea(ID_list = ID_list)
     dg.process_data()
     #create_data_partition(file_path = '/Volumes/Elements/selected_p_files_npy')
