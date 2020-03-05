@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Mar  4 14:42:19 2020
+
+@author: danielyaeger
+"""
+import numpy as np
+from pathlib import Path
+
+class OnlineBaseliner():
+    def __init__(self, model, data_generator, epoch, 
+                 save_path = '/Users/danielyaeger/Documents/Modules/apnea_ml/src/predictions',
+                 save_labels = True, convergence_limit = 10, difference_threshold = 1):
+        
+        self.model = model
+        self.data_generator = data_generator
+        self.stepsize = data_generator.batch_size
+        self.labels = np.zeros(len(self.data_generator.labels))
+        self.convergence_limit = convergence_limit
+        self.difference_threshold = difference_threshold
+        
+        # Go through first pass to baseline data incrementally based on predictions
+        # Also generates predicted labels
+        self.first_pass()
+        
+        if save_labels:
+            if not isinstance(save_path, Path):
+                save_path = Path(save_path)
+            with save_path.joinpath(f'{epoch}.npy').open('wb') as f:
+                np.save(f,self.labels)
+
+        # Baseline all data based on predicted labels 
+        self.data_generator.baseline_all_data(self.labels)
+
+        
+    def first_pass(self):
+        """Performs a first pass. First baselines data naively, and then if an
+        apneic/hypopneic event is predicted, re-baselines the data."""
+        
+        #print(f'Max index is {len(self.data_generator)}')
+        for index in range(len(self.data_generator)):
+            
+            #print(f'\tAnalyzing index {index}')
+            # Baseline data naively
+            self.data_generator.refresh_copy(index)
+            self.data_generator.__baseline_item__(index, self.labels)
+            
+            # Get data
+            x, _ = self.data_generator.__getitem__(index)
+            
+            # Make predictions based on data
+            predictions = self.model.predict(x, use_multiprocessing = False).argmax(-1)
+            
+            if (predictions == 0).all():
+                self.labels[index*self.stepsize:(index+1)*self.stepsize] = predictions
+                continue
+            
+            counter = 0
+            while not (predictions == self.labels[index*self.stepsize:(index+1)*self.stepsize]).all():
+                
+                # Break if difference in number of detected events is less than some threshold
+                diff = np.abs(self.labels[index*self.stepsize:(index+1)*self.stepsize].sum() - predictions.sum())
+                
+                if diff <= self.difference_threshold:
+                    self.labels[index*self.stepsize:(index+1)*self.stepsize] = \
+                        self.consensus_sequence(self.labels[index*self.stepsize:(index+1)*self.stepsize],predictions)
+                    break
+
+                counter += 1
+                #print(f'\t\t{counter}')
+                #print(f'\t\tevent count labels: {self.labels[index*self.stepsize:(index+1)*self.stepsize].sum()}\
+                                   # \tevent count predictions: {predictions.sum()}')
+                # Set labels to predictions
+                self.labels[index*self.stepsize:(index+1)*self.stepsize] = predictions
+                
+                # Break if number of times through loop exceeds some value
+                if counter >= self.convergence_limit:
+                    self.labels[index*self.stepsize:(index+1)*self.stepsize] = \
+                        self.consensus_sequence(self.labels[index*self.stepsize:(index+1)*self.stepsize],predictions)
+                    break
+                            
+                # Redo baseline
+                self.data_generator.refresh_copy(index)
+                self.data_generator.__baseline_item__(index, self.labels)
+                
+                # Re-do prediction
+                x, _ = self.data_generator.__getitem__(index)
+                predictions = self.model.predict(x, use_multiprocessing = False).argmax(-1)
+
+    def get_loss(self):
+        "Returns the loss for the online-baselined data"
+        x, y = self.data_generator.get_data()
+        metrics = self.model.evaluate(x,y)
+        return metrics
+    
+    def get_pred(self):
+        "Returns argmaxed predictions for the online-baselined data"
+        x, _ = self.data_generator.get_data()
+        return self.model.predict(self.x)
+    
+    @staticmethod
+    def consensus_sequence(labels, predictions):
+        """Generates a consensus sequence, which is equal to the values of the
+        two sequences for indices at which they agree and randomly equal to
+        one or the other at indices where they disagree
+        """
+        lab_prob = np.random.randint(0,2,len(labels))
+        return (lab_prob*labels + (1 - lab_prob)*predictions)

@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from biosppy.utils import ReturnTuple
 
-def load_ecg(ID = 'XAXVDJYND8HHODS', input_path = '/Volumes/TOSHIBA EXT/training_data'): 
+def load_ecg(ID = 'XAXVDJYND80Q4Q0', input_path = '/Volumes/TOSHIBA EXT/training_data'): 
    xdf, signal = load_data(input_path + '/' + ID + '.xdf', input_path + '/' + ID + '.nkamp') 
    ecg = signal.read_file('ECG') 
    return ecg['ECG'].ravel()            
@@ -30,24 +30,26 @@ class MedianFilter():
     """
     
     def  __init__(self, filter_lower: bool = True, filter_upper: bool = False,
-                  upper_bound: float = 2, lower_bound: float = 0.3,
-                  output_sampling_rate: int = 10, half_window_size = 5):
+                  upper_bound: float = 2, lower_bound: float = 0.3, 
+                  input_sampling_rate: int = 200, output_sampling_rate: int = 10, 
+                  half_window_size = 5):
         
         self.filter_lower = filter_lower
         self.filter_upper = filter_upper
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound
         self.output_sampling_rate = output_sampling_rate
+        self.input_sampling_rate = input_sampling_rate
         self.half_window_size = half_window_size
 
-    def generate_hr_time_series(self, ecg_data: ReturnTuple, end_time: int, show = False):
+    def generate_hr_time_series(self, ecg_data: ReturnTuple, ecg_sig: np.array, end_time: int, show = False):
         
         """Takes in ecg data (a ReturnTuple object) and returns a numpy array with
         ones at R wave peaks and zero elsewhere, at the output_sampling_rate and
         of length end_time X output_sampling_rate
         
         INPUT:
-            ecg_data: a biosippy.utils ReturnTuple with 'heart_rate_ts' field
+            ecg_data: a biosippy.utils ReturnTuple with 'rpeaks' field
             
             end_time: end time of data in ecg_data
             
@@ -68,8 +70,14 @@ class MedianFilter():
         out = np.zeros(int(end_time*self.output_sampling_rate))
         ts = np.arange(int(end_time*self.output_sampling_rate))*(1/self.output_sampling_rate)
         
+        rpeaks = ecg_data['rpeaks'].copy()
+        
+        # Get intervals
+        intervals = np.diff(rpeaks)
+        
         # Median filter RR intervals
-        intervals = self.run_median_filter(np.diff(ecg_data['heart_rate_ts']))
+        if self.filter_lower or self.filter_upper:
+            intervals, rpeaks = self.run_median_filter(intervals, rpeaks)
         
         # Make sure intervals is of sufficient length
         assert len(intervals) >= 1, f'Fewer than 1 RR intervals! Only {len(intervals)} RR intervals found!'
@@ -79,35 +87,37 @@ class MedianFilter():
         # Convert corrected intervals to heart beat time series
         for i in range(len(rr_peaks)):
             if i == 0:
-                rr_peaks[0] = ecg_data['heart_rate_ts'][0]
+                rr_peaks[0] = rpeaks[0]
             else:
                 rr_peaks[i] = rr_peaks[i-1] + intervals[i-1]
         
-        # Convert time of peaks to "binary" time series
-        for peak in rr_peaks:
-            if peak <= end_time:
-                out[np.nonzero(ts <= peak)[0][-1]] = 1
+        # If no filtering, signals should be identical
+        if not (self.filter_lower or self.filter_upper):
+            assert (rr_peaks == rpeaks).all(), "rr_peaks and ecg_data['rpeaks'] are not equal!"
+        
+        # Convert time of peaks to time series with R peaks
+        for i,time in enumerate(rr_peaks):
+            if time <= end_time:
+                # index is greatest index less than time
+                idx = np.nonzero(ts <= time)[0][-1]
+                if not (self.filter_lower or self.filter_upper):
+                    out[idx] = np.abs(rpeaks[i])
+                else:
+                    out[idx] = 1
         
         if show:
-            intervals_orig = np.diff(ecg_data['heart_rate_ts'])
-    
-            rr_peaks_orig = np.zeros(len(intervals_orig) + 1)
-            # Convert corrected intervals to heart beat time series
-            
-            for i in range(len(rr_peaks_orig)):
-                if i == 0:
-                    rr_peaks_orig[0] = ecg_data['heart_rate_ts'][0]
-                else:
-                    rr_peaks_orig[i] = rr_peaks_orig[i-1] + intervals_orig[i-1]
-            
-            plt.stem(rr_peaks_orig, np.ones(len(rr_peaks_orig)), label = 'Original HBs', use_line_collection=True)
-            plt.plot(ts,out, label = f'HBs @ {self.output_sampling_rate} Hz', color = 'orange')
+            plt.subplot(2,1,1)
+            plt.plot(ecg_sig, label = 'ECG')
+            plt.legend(loc='best')
+            plt.subplot(2,1,2)
+            plt.plot(ts,out, label = f'R peaks @ {self.output_sampling_rate} Hz')
             plt.legend(loc='best')
             plt.show()
             
         return out
     
-    def run_median_filter(self,intervals: np.array):
+    
+    def run_median_filter(self,intervals: np.array, rpeaks: np.array):
         """Calls the median filter function to filter input array until arrays
         stop changing.
         
@@ -120,7 +130,7 @@ class MedianFilter():
         assert len(intervals) > 0, 'Intervals has length zero!'
         
         if self.filter_lower:
-            corrected = self.lower_median_filter(intervals=intervals)
+            corrected, rpeaks = self.lower_median_filter(intervals=intervals, rpeaks=rpeaks)
         if self.filter_upper:
             if self.filter_lower:
                 corrected = self.upper_median_filter(intervals=corrected)
@@ -135,7 +145,7 @@ class MedianFilter():
             intervals = corrected.copy()
             del corrected
             if self.filter_lower:
-                corrected = self.lower_median_filter(intervals=intervals)
+                corrected, rpeaks = self.lower_median_filter(intervals=intervals, rpeaks=rpeaks)
             if self.filter_upper:
                 if self.filter_lower:
                     corrected = self.upper_median_filter(intervals=corrected)
@@ -148,7 +158,8 @@ class MedianFilter():
         if self.filter_upper:
             assert np.all(corrected < self.upper_bound), f'Values in filtered array greater than upper bound of {self.upper_bound}: {corrected[corrected >= self.upper_bound]} at indices {np.nonzero(corrected >= self.upper_bound)[0]}!'
         
-        return corrected
+        assert len(rpeaks) == (len(corrected) + 1), f"length of corrected ({len(corrected)}) not equal to length of corrected ({len(corrected)})!"
+        return corrected, rpeaks
     
     def test_for_equality(self,a,b):
         """Returns True if two arrays are equal. Otherwise returns False.
@@ -192,7 +203,7 @@ class MedianFilter():
         
         return median
     
-    def lower_median_filter(self,intervals: np.array):
+    def lower_median_filter(self,intervals: np.array, rpeaks: np.array):
         """ Implements the lower median filter as described in Chen, Song, & Zhang, 2015
         
         INPUTS: 
@@ -201,6 +212,7 @@ class MedianFilter():
         RETURNS:
             corrected intervals"""
         out = list(intervals.copy())
+        rpeaks = list(rpeaks.copy())
         
         # Look at lowest bound first
         # Find minimum position
@@ -234,6 +246,7 @@ class MedianFilter():
                     else:
                         out[min_position-1] = intervals[min_position-1] + intervals[min_position]
                     out.pop(min_position)
+                    rpeaks.pop(min_position+1)
                 
             elif min_position == 0:
                 out[min_position+1] = np.mean([intervals[min_position+1], intervals[min_position]])
@@ -244,7 +257,7 @@ class MedianFilter():
                 out[min_position] = out[min_position-1]
                 
         # Update intervals to account for removing interval
-        return  np.array(out)
+        return  np.array(out), np.array(rpeaks)
     
     def upper_median_filter(self,intervals: np.array):
         """ Implements the upper median filter as described in Chen, Song, & Zhang, 2015

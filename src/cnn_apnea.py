@@ -28,6 +28,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, f1_score, average_precision_score, accuracy_score
 from sklearn.metrics import confusion_matrix, balanced_accuracy_score, classification_report
 from data_generator_apnea import DataGeneratorApnea
+from model_functions.model_functions import build_model
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from collections import defaultdict
@@ -41,98 +42,6 @@ from viterbi import post_process
 # out_path = Path('results')
 # if not out_path.is_dir(): out_path.mkdir()
     
-######### Functions for building network #####################################
-def _add_conv_layer(layer, n_filters, filter_size, stride=1,
-                    input_shape=None, activation="relu", 
-                    batch_norm=True, pool=True, conv2D=False):
-    """
-    Add a conv layer to network architecture
-    INPUTS:
-        layer: input to layer
-        n_filters: nunber of filters in current layer
-        filter_size: filter size for current layer
-        stride: stride for current layer
-        input_shape: input shape to current layer, only needed for first layer
-        activation: activation function for current layer
-        batch_norm: will current layer use batch normalization
-        pool: will current layer use max pooling
-        conv2d: is current layer going to use 2d conv (True) or 1d (False)
-    OUTPUTS:
-        conv layer
-    """
-    if conv2D:
-        conv = Conv2D
-        pool = MaxPool2D
-    else:
-        conv = Conv1D
-        pool = MaxPool1D
-    if input_shape:
-        layer = conv(n_filters, filter_size, stride=stride,
-                       input_shape=input_shape)(layer)
-    else:
-        layer = conv(n_filters, filter_size, stride)(layer)
-    layer = Activation(activation)(layer)
-    if batch_norm:
-        layer = BatchNormalization()(layer)
-    if pool:
-        layer = pool(2)(layer)
-    return layer
-
-
-def _add_dense_layer(layer, n_out, activation="relu", dropout_p=None):
-    """
-    Add a dense layer to network architecture
-    INPUTS:
-        layer: input to layer
-        n_out: number of output neurons
-        activation: activation function for current layer
-        dropout_p: retain probability for current layer (if None -> no dropout)
-    OUTPUTS:
-        dense layer
-    """
-    layer = Dense(n_out)(layer)
-    if activation:
-        layer = Activation(activation)(layer)
-    if dropout_p:
-        layer = Dropout(dropout_p)(layer)
-    return layer
-
-def build_model(**params):
-    """
-    Function for build a network based on the specified input params
-    INPUTS:
-        params = {"conv_layers":[(input_size_i, output_size_i, stride_i), ...],
-                  "fc_layers": [output_size_i, ...],
-                  "input_shape":(n, m, ...),
-                  "callbacks":[callback_i, ...],
-                  "learning_rate":1e-3,
-                  ...}
-    OUTPUTS:
-        compiled network
-    """
-    conv_layers = params["conv_layers"]
-    fc_layers = params["fc_layers"]
-    input_ = Input(shape=params["input_shape"])
-    if params.get("learning_rate"):
-        learning_rate = params["learning_rate"]
-    else:
-        learning_rate = 1e-3
-    out = input_
-    for i, p in enumerate(conv_layers):
-        out = _add_conv_layer(out, *p)
-    out = Flatten()(out)
-    for i, n in enumerate(fc_layers):
-        if i < len(fc_layers) - 1:
-            out = _add_dense_layer(out, n, activation="relu", dropout_p=0.5)
-        else:
-            out = _add_dense_layer(out, n, activation="softmax")
-    optim = Adam(learning_rate)
-    model = Model(input_, out)
-    model.compile(optimizer=optim, 
-                  loss="categorical_crossentropy",
-                  metrics=[keras.metrics.CategoricalAccuracy(),
-                           keras.metrics.Precision()])
-    return model
 
 ########### Generators #################################################
 print('Making generators')

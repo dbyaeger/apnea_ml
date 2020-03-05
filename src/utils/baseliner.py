@@ -82,12 +82,17 @@ def set_baseline(data: np.ndarray, labels: np.ndarray, index: int,
         
         if baseline_type == 'quantile':
             baseline = np.quantile(a=baseline,q=quantile,axis=0)
-            assert baseline != 0, f'Baseline is equal to zero!'
+            if baseline == 0:
+                print('WARNING: Baseline region only contains zeros!')
+                baseline = 1
             return (baseline,)
         
         elif baseline_type == 'min_max':
             b_min = np.quantile(a=baseline, q=cut_offs[0], axis=0)
             b_max = np.quantile(a=baseline, q=cut_offs[1], axis=0)
+            if (b_max - b_min) == 0:
+                print('WARNING: Baseline region only contains zeros!')
+                b_min, b_max = 0, 1
             baseline = (b_min,b_max)
         
         return baseline

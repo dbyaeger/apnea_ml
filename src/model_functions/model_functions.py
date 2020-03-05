@@ -8,6 +8,7 @@ Created on Mon Feb 24 15:02:09 2020
 from tensorflow import keras
 from tensorflow.keras import Sequential, Input, Model, callbacks, layers
 from tensorflow.keras.layers import Dense, Conv1D, Conv2D, Dropout, Flatten
+from tensorflow.keras.layers import LSTM, Bidirectional
 from tensorflow.keras.layers import MaxPool1D, MaxPool2D
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D
 from tensorflow.keras.layers import BatchNormalization, Add, Activation
@@ -52,6 +53,27 @@ def _add_conv_layer(layer, n_filters, filter_size, stride=1,
         layer = pool(2)(layer)
     return layer
 
+def _add_lstm(layer, units = 128, return_sequences = False, 
+              dropout_p = 0, input_shape = None):
+    """
+    Add an LSTM layer to network architecture
+    INPUTS:
+        layer = input to layer
+        units = number of units
+        input_shape = input shape to current layer, only needed for first layer
+        return_sequences = whether to return a sequence
+        dropout_p = dropout probability
+    OUTPUTs:
+        LSTM layer
+    """
+    if input_shape:
+        layer = LSTM(input_shape=input_shape, units = units, 
+                     return_sequences = return_sequences, dropout = dropout_p)(layer)
+    else:
+        layer = LSTM(units = units, 
+                     return_sequences = return_sequences, dropout = dropout_p)(layer)
+    return layer
+
 
 def _add_dense_layer(layer, n_out, activation="relu", dropout_p=None):
     """
@@ -73,12 +95,15 @@ def _add_dense_layer(layer, n_out, activation="relu", dropout_p=None):
 
 def build_model(**params):
     """
-    Function for build a network based on the specified input params
+    Function for build a network based on the specified input params. By default,
+    convolutional layers are assumed, when present, to come before lstm_layers.
+    
     INPUTS:
         params = {"conv_layers":[(input_size_i, output_size_i, stride_i), ...],
                   "fc_layers": [output_size_i, ...],
                   "input_shape":(n, m, ...),
                   "callbacks":[callback_i, ...],
+                  "lstm_layers" ;[(units_i, return_sequences_i, dropout_p_i), ...],
                   "learning_rate":1e-3,
                   ...}
     OUTPUTS:
@@ -86,15 +111,20 @@ def build_model(**params):
     """
     conv_layers = params["conv_layers"]
     fc_layers = params["fc_layers"]
+    lstm_layers = params["lstm_layers"]
     input_ = Input(shape=params["input_shape"])
     if params.get("learning_rate"):
         learning_rate = params["learning_rate"]
     else:
         learning_rate = 1e-3
     out = input_
-    for i, p in enumerate(conv_layers):
-        out = _add_conv_layer(out, *p)
-    out = Flatten()(out)
+    if conv_layers:
+        for i, p in enumerate(conv_layers):
+            out = _add_conv_layer(out, *p)
+        out = Flatten()(out)
+    elif lstm_layers:
+        for i, p in enumerate(lstm_layers):
+            out = _add_conv_layer(out, *p)
     for i, n in enumerate(fc_layers):
         if i < len(fc_layers) - 1:
             out = _add_dense_layer(out, n, activation="relu", dropout_p=0.5)

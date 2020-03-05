@@ -8,16 +8,16 @@ Created on Wed Nov 13 14:28:42 2019
 from pathlib import Path
 import numpy as np
 import pickle
-from src.utils.baseliner import baseline
+from utils.baseliner import baseline, set_baseline
 
 class DataGeneratorApneaTest():
     'Data Generator for TensorFlow'
     def __init__(self, data_path: str = '/Users/danielyaeger/Documents/raw_no_baseline',
                  sampling_rate: int = 10, n_classes = 2,
-                 context_samples: int = 300,
+                 context_samples: int = 300, batch_size = 10,
                  single_ID = 'XAXVDJYND80EZPY',
                  k_fold = 5, test_index = 0, mode = 'train',
-                 baseline_train = True, cut_offs = (0.01,0.99)):
+                 baseline_train = False, cut_offs: (float,float) = (0.25,0.75)):
 
 
         if type(data_path) == str: data_path = Path(data_path)
@@ -61,32 +61,22 @@ class DataGeneratorApneaTest():
         self.data = {i: variables[i*fold_size:(i+1)*fold_size,:] for i in range(k_fold)}
         self.targets = {i: self.targets[single_ID][i*fold_size:(i+1)*fold_size] for i in range(k_fold)}
         
-        # Delete test_index if mode is not 'val' or 'train'
+        self.context_samples = context_samples
+        self.fs = sampling_rate
+        self.cut_offs = cut_offs
+        self.batch_size = batch_size
+        self.test_index = test_index
+        
         if mode == 'train':
+            # Delete test_index if mode is not 'val' or 'train'
             del self.data[test_index]
             del self.targets[test_index]
-            if baseline_train:
-                for fold in self.data:
-                    for channel in self.channel_list:
-                        if channel == 'SpO2':
-                            self.data[fold][:,self.channel_list.index(channel)] = baseline(data=self.data[fold][:,self.channel_list.index(channel)],
-                                                                                     labels = self.targets[fold],
-                                                                                     baseline_type = 'quantile',
-                                                                                     sampling_rate=10,
-                                                                                     quantile=0.95,
-                                                                                     baseline_length=120,
-                                                                                     step_size=10)
-                        elif channel != 'ECG':
-                            self.data[fold][:,self.channel_list.index(channel)] = baseline(data=self.data[fold][:,self.channel_list.index(channel)],
-                                                                                     labels = self.targets[fold],
-                                                                                     baseline_type = 'min_max',
-                                                                                     sampling_rate=10,
-                                                                                     cut_offs = cut_offs,
-                                                                                     baseline_length=120,
-                                                                                     step_size=10)
+            if baseline_train:                                                                 
+                self.baseline_all_data()                                                                     
    
         elif mode in ['val','cv','test']:
             self.data = {test_index: self.data[test_index]}
+            self.copy = {test_index: self.data[test_index].copy()}
             self.targets = {test_index: self.targets[test_index]}
             assert len(list(self.data.keys())) == len(list(self.targets.keys())) == 1, f'self.targets keys: {self.targets.keys()}'
         
@@ -95,20 +85,37 @@ class DataGeneratorApneaTest():
        
         elif self.n_classes == 2:
             self.label_dict = {'0': 0, 'A/H': 1}
-                
-
 
         self.inverse_label_dict = {self.label_dict[label]: label for label in self.label_dict}
-        
-        self.context_samples = context_samples
-        self.fs = sampling_rate
-        self.cut_offs = cut_offs
                 
         self.dim = (2*context_samples + 1, self.n_channels)
         
         self.make_samples()
         
-        
+    def baseline_all_data(self, labels = None):
+        """Baselines training data"""       
+        for fold in self.data:
+            if labels is None:
+                labels = self.targets[fold]
+            for channel in self.channel_list:
+                if channel == 'SpO2':
+                    self.data[fold][:,self.channel_list.index(channel)] = baseline(data=self.data[fold][:,self.channel_list.index(channel)],
+                                                                             labels = labels,
+                                                                             baseline_type = 'quantile',
+                                                                             sampling_rate=10,
+                                                                             quantile=0.95,
+                                                                             baseline_length=120,
+                                                                             step_size=10)
+                elif channel != 'ECG':
+                    self.data[fold][:,self.channel_list.index(channel)] = baseline(data=self.data[fold][:,self.channel_list.index(channel)],
+                                                                             labels = labels,
+                                                                             baseline_type = 'min_max',
+                                                                             sampling_rate=10,
+                                                                             cut_offs = self.cut_offs,
+                                                                             baseline_length=120,
+                                                                             step_size=10)
+
+
     def make_samples(self):
         """If mode is set to train, creates samples by randoming sampling each
         label in proportion to the total amount of samples for each sleeper"""
@@ -167,20 +174,97 @@ class DataGeneratorApneaTest():
         return class_weights
     
     
-    def get_data(self,):
-        """Generate one batch of samples"""
+    def get_data(self, usecopy = False):
+        """Returns all data"""
         X = np.zeros((len(self.samples), *self.dim), dtype=np.float32)
         y = np.zeros((len(self.samples), self.n_classes))
         for i, item in enumerate(self.samples):
             ID, idx, label = item
-            features, label = self._sample(ID, idx, label)
+            features, label = self._sample(ID, idx, label, usecopy)
             X[i], y[i] = features, label
 
-        # self._check_labels(y)
         return X, y
     
-    def _sample(self, ID, center_idx, label):
-        """ Returns random or weighted random sampled from ID
+    def refresh_copy(self, index):
+        "Restores copy of data for specified indices of batch"
+        samples = self.samples[index*self.batch_size:(index+1)*self.batch_size]
+        
+        # Get the index of the samples
+        idxs = [item[1] for item in samples]
+        
+        # Find start index
+        start_idx = min(idxs)
+        start_idx = max(0, start_idx - self.context_samples)
+         
+        # Find end index
+        end_idx = max(idxs)
+        end_idx = min(len(self.samples), end_idx + self.context_samples)
+        
+        self.copy[self.test_index][start_idx:end_idx+1] = self.data[self.test_index][start_idx:end_idx+1].copy()
+    
+    def __getitem__(self,index, usecopy=True):
+        """Returns one batch of data"""
+        X = np.zeros((self.batch_size, *self.dim), dtype=np.float32)
+        y = np.zeros((self.batch_size, self.n_classes))
+        samples = self.samples[index*self.batch_size:(index+1)*self.batch_size]
+        for i, (ID, idx, label) in enumerate(samples):
+            features, label = self._sample(ID, idx, label, usecopy)
+            X[i], y[i] = features, label
+        return X, y
+                      
+    def __len__(self):
+        """Number of batches per epoch"""
+        return len(self.samples) // self.batch_size
+    
+    def __baseline_item__(self,index,labels,usecopy=True):
+        """Baselines one batch of data. Assumes all data has the same ID"""
+        # Get samples. Assumes samples are ordered 
+        samples = self.samples[index*self.batch_size:(index+1)*self.batch_size]
+        
+        # Get the index of the samples
+        idxs = [item[1] for item in samples]
+        
+        # Find start index
+        start_idx = min(idxs)
+        start_idx = max(0, start_idx - self.context_samples)
+         
+        # Find end index
+        end_idx = max(idxs)
+        end_idx = min(len(labels), end_idx + self.context_samples)
+        
+        if usecopy:
+            data = self.copy[self.test_index]
+        else:
+            data = self.data[self.test_index]
+        
+        # Set baseline
+        for channel in self.channel_list:
+            if channel == 'SpO2':
+                baseline = set_baseline(data=data[:,self.channel_list.index(channel)],
+                                        index = end_idx,
+                                        labels = labels,
+                                        baseline_type = 'quantile',
+                                        sampling_rate=self.fs,
+                                        quantile=0.95,
+                                        baseline_length=120)
+                data[start_idx:end_idx+1,self.channel_list.index(channel)] = data[start_idx:end_idx+1,self.channel_list.index(channel)]/baseline[0]
+                
+            elif channel != 'ECG':
+                baseline = set_baseline(data=data[:,self.channel_list.index(channel)],
+                                        index = end_idx,
+                                        labels = labels,
+                                        baseline_type = 'min_max',
+                                        sampling_rate=self.fs,
+                                        cut_offs=self.cut_offs,
+                                        baseline_length=120)
+                data[start_idx:end_idx+1,self.channel_list.index(channel)] = (data[start_idx:end_idx+1,self.channel_list.index(channel)] - baseline[0])/(baseline[1]-baseline[0])
+                
+        
+        
+        
+    
+    def _sample(self, ID, center_idx, label, usecopy):
+        """ Returns random or weighted random sampled from ID.
         """
         # Check if epoch in sleep study
         assert 0 <= center_idx <= len(self.targets[ID])-1, f"Index: {center_idx} not in apnea_hypopnea_targets.p for {ID}!"
@@ -201,8 +285,11 @@ class DataGeneratorApneaTest():
             right_pad = np.zeros((end_idx - end_sig_idx,self.n_channels))
             end_idx = end_sig_idx
         x = np.zeros(self.dim)
-       
-        sig = self.data[ID][start_idx:end_idx,:self.n_channels]
+        
+        if usecopy:
+            sig = self.copy[ID][start_idx:end_idx,:self.n_channels]
+        else:
+            sig = self.data[ID][start_idx:end_idx,:self.n_channels]
 
         if left_pad is None and right_pad is None:
             x = sig
