@@ -14,35 +14,33 @@ from bayes_opt import BayesianOptimization
 from data_generators.data_generator_apnea_ID_batch import DataGeneratorApneaIDBatch
 from data_generators.data_generator_apnea import DataGeneratorApnea
 
-pbounds = {'dropout_rate': (0.1,0.9),
-           'conv_layer_lambda': (1e-4,1),
-           'conv_filter_size': (10,200),
-           'fc_neurons': (32,512),
-           'fc_layer_lambda': (1e-4,1)}
+
 
 class BayesTrainer():
-    pbounds = {'dropout_rate': (0.1,0.9),
-           'conv_layer_lambda': (1e-4,1),
-           'conv_filter_size': (10,200),
-           'fc_neurons': (32,512),
-           'fc_layer_lambda': (1e-4,1)}
-    
-    iterations = -1
-    
-    init_points = 10
-    n_iter = 10
-    
+    """Wrapper class to optimize a model using Bayesian Optimization
+    package
+    """
+    def __init__(self, data_path: str, pbounds: dict = {'dropout_rate': (0.1,0.9),
+                 'conv_layer_lambda': (1e-4,1), 'conv_filter_size': (10,200),
+                 'fc_neurons': (32,512),'fc_layer_lambda': (1e-4,1)},
+                 init_points: int = 10, n_iter: int = 10):
+        
+        if not isinstance(data_path, Path): data_path = Path(data_path)
+        self.data_path = data_path
+        self.pbounds = pbounds
+        self.init_points = init_points
+        self.n_iter = n_iter
+        self.iterations = -1
+        
     def fit_with(self,dropout_rate, conv_layer_lambda, conv_filter_size, fc_neurons, fc_layer_lambda):
         """Builds a 1-conv layer, 2-dense layer neural net with specified 
         """
         # set iterations variable for model saving
         self.iterations += 1
-        
-        data_path = Path('/Users/danielyaeger/Documents/raw_no_baseline_all')
             
         #Make generators
         train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
-                                    data_path = data_path,
+                                    data_path = self.data_path,
                                     batch_size = 128,
                                     mode="train",
                                     context_samples=300,
@@ -50,7 +48,7 @@ class BayesTrainer():
                                     desired_number_of_samples = 2.1e6)
         
         cv_generator =  DataGeneratorApnea(n_classes = 2,
-                                    data_path = data_path,
+                                    data_path = self.data_path,
                                     batch_size = 128,
                                     mode="cv",
                                     context_samples=300,
@@ -82,7 +80,7 @@ class BayesTrainer():
         model = build_model(**params)
         
         # Train
-        model.fit_generator(train_generator,
+        model.fit(train_generator,
                   validation_data=cv_generator,
                   use_multiprocessing=True,
                   workers=4,
@@ -94,7 +92,7 @@ class BayesTrainer():
         # Evaluate balanced accuracy on best model
         best_model = load_model(model_path)
         cv_generator =  DataGeneratorApnea(n_classes = 2,
-                                    data_path = data_path,
+                                    self.data_path = data_path,
                                     batch_size = 128,
                                     mode="cv",
                                     context_samples=300,
