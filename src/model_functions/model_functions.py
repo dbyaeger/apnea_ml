@@ -89,7 +89,7 @@ def _add_dense_layer(layer, n_out, l2_lambda = None, dropout_p=None,
     if l2_lambda:
         layer = Dense(n_out, kernel_regularizer = l2(l2_lambda))(layer)
     else:
-        layer = Dense(n_out)
+        layer = Dense(n_out)(layer)
     if activation:
         layer = Activation(activation)(layer)
     if dropout_p:
