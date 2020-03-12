@@ -6,8 +6,9 @@ Created on Mon Feb 24 15:02:09 2020
 @author: danielyaeger
 """
 from tensorflow import keras
+from tensorflow.keras.regularizers import l2
 from tensorflow.keras import Sequential, Input, Model, callbacks, layers
-from tensorflow.keras.layers import Dense, Conv1D, Conv2D, Dropout, Flatten
+from tensorflow.keras.layers import Dense, Conv1D, Dropout, Flatten
 from tensorflow.keras.layers import LSTM, Bidirectional
 from tensorflow.keras.layers import MaxPool1D, MaxPool2D
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D
@@ -17,8 +18,8 @@ from tensorflow.keras.losses import mean_squared_error, binary_crossentropy
 from tensorflow.keras.activations import relu, softmax, sigmoid
 
 ######### Functions for building network #####################################
-def _add_conv_layer(layer, n_filters, filter_size, stride=1,
-                    input_shape=None, activation="relu", 
+def _add_conv_layer(layer, n_filters, filter_size, l2_lambda = 0,
+                    stride=1, input_shape=None, activation="relu", 
                     batch_norm=True, pool=True, conv2D=False):
     """
     Add a conv layer to network architecture
@@ -26,6 +27,7 @@ def _add_conv_layer(layer, n_filters, filter_size, stride=1,
         layer: input to layer
         n_filters: nunber of filters in current layer
         filter_size: filter size for current layer
+        l2_lambda: l2 regularizer value
         stride: stride for current layer
         input_shape: input shape to current layer, only needed for first layer
         activation: activation function for current layer
@@ -35,17 +37,12 @@ def _add_conv_layer(layer, n_filters, filter_size, stride=1,
     OUTPUTS:
         conv layer
     """
-    if conv2D:
-        conv = Conv2D
-        pool = MaxPool2D
-    else:
-        conv = Conv1D
-        pool = MaxPool1D
     if input_shape:
-        layer = conv(n_filters, filter_size, stride=stride,
-                       input_shape=input_shape)(layer)
+        layer = Conv1D(n_filters, filter_size, kernel_regularizer = l2_lambda,
+                     stride=stride, input_shape=input_shape)(layer)
     else:
-        layer = conv(n_filters, filter_size, stride)(layer)
+        layer = Conv1D(n_filters, filter_size, stride=stride, 
+                     kernel_regularizer = l2_lambda)(layer)
     layer = Activation(activation)(layer)
     if batch_norm:
         layer = BatchNormalization()(layer)
@@ -77,7 +74,8 @@ def _add_lstm_layer(layer, units = 128, return_sequences = False,
     return layer
 
 
-def _add_dense_layer(layer, n_out, activation="relu", dropout_p=None):
+def _add_dense_layer(layer, n_out, l2_lambda = None, dropout_p=None,
+                     activation = "relu"):
     """
     Add a dense layer to network architecture
     INPUTS:
@@ -88,7 +86,10 @@ def _add_dense_layer(layer, n_out, activation="relu", dropout_p=None):
     OUTPUTS:
         dense layer
     """
-    layer = Dense(n_out)(layer)
+    if l2_lambda:
+        layer = Dense(n_out, kernel_regularizer = l2_lambda)(layer)
+    else:
+        layer = Dense(n_out)
     if activation:
         layer = Activation(activation)(layer)
     if dropout_p:
@@ -101,8 +102,8 @@ def build_model(**params):
     convolutional layers are assumed, when present, to come before lstm_layers.
     
     INPUTS:
-        params = {"conv_layers":[(input_size_i, output_size_i, stride_i), ...],
-                  "fc_layers": [output_size_i, ...],
+        params = {"conv_layers":[(input_size_i, output_size_i, l2_lambda_i), ...],
+                  "fc_layers": [output_size_i, l2_lambda_i, dropout_i],
                   "input_shape":(n, m, ...),
                   "callbacks":[callback_i, ...],
                   "lstm_layers" ;[(units_i, return_sequences_i, dropout_p_i), ...],
@@ -135,8 +136,9 @@ def build_model(**params):
             out = _add_lstm_layer(out, *p)
     for i, n in enumerate(fc_layers):
         if i < len(fc_layers) - 1:
-            out = _add_dense_layer(out, n, activation="relu", dropout_p=0.5)
+            out = _add_dense_layer(out, *p)
         else:
+            n = p[0]
             out = _add_dense_layer(out, n, activation="softmax")
     optim = Adam(learning_rate)
     model = Model(input_, out)
