@@ -20,17 +20,25 @@ class BayesTrainer():
     """Wrapper class to optimize a model using Bayesian Optimization
     package
     """
-    def __init__(self, data_path: str, pbounds: dict = {'dropout_rate': (0.1,0.9),
+    def __init__(self, data_path: str, model_path: str, pbounds: dict = {'dropout_rate': (0.1,0.9),
                  'conv_layer_lambda': (1e-4,1), 'conv_filter_size': (10,200),
                  'fc_neurons': (32,512),'fc_layer_lambda': (1e-4,1)},
                  init_points: int = 10, n_iter: int = 10):
         
         if not isinstance(data_path, Path): data_path = Path(data_path)
         self.data_path = data_path
+        
+        if not isinstance(model_path, Path): model_path = Path(model_path)
+        self.model_path = model_path
+        
+        if not self.model_path.is_dir():
+            self.model_path.mkdir()
+            
         self.pbounds = pbounds
         self.init_points = init_points
         self.n_iter = n_iter
         self.iterations = -1
+        
         
     def fit_with(self,dropout_rate, conv_layer_lambda, conv_filter_size, fc_neurons, fc_layer_lambda):
         """Builds a 1-conv layer, 2-dense layer neural net with specified 
