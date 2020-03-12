@@ -10,14 +10,14 @@ import numpy as np
 import pickle
 from tensorflow.python.keras.utils.data_utils import Sequence
 
-class DataGeneratorApnea(Sequence):
+class DataGeneratorApneaIDBatch(Sequence):
     'Data Generator for TensorFlow'
     def __init__(self, data_path: str = '/Users/danielyaeger/Documents/raw_apnea_data',
                  batch_size: int = 64, mode: str = 'train', sampling_rate: int = 10, 
                  n_classes = 2, desired_number_of_samples = 2.1e6,
                  use_staging = True,
                  context_samples: int = 300, shuffle: bool = False, 
-                 load_all_data: bool = True, single_ID = None, REM_only: bool = False):
+                 single_ID = None, REM_only: bool = False):
 
         assert mode in ['train', 'cv', 'test', 'val'], f'mode must be train, cv, val, or test, not {mode}'
 
@@ -48,6 +48,8 @@ class DataGeneratorApnea(Sequence):
             self.IDs = partition["val"] if "val" in partition else partition["cv"]
         elif mode == "test":
             self.IDs = partition["test"]
+        
+        self.IDs = list(self.IDs)
         
         self.single_ID = single_ID
         if single_ID is not None:
@@ -88,14 +90,7 @@ class DataGeneratorApnea(Sequence):
                             self.targets[ID][(epoch-1)*sampling_rate*30:epoch*sampling_rate*30] = -1
 
         self.inverse_label_dict = {self.label_dict[label]: label for label in self.label_dict}
-        
-        self.load_all_data = load_all_data
-        if load_all_data:
-            self.data = {}
-            for ID in self.IDs:
-                self.data[ID] = np.load(str(self.data_path.joinpath(ID + '.npy')))
-                
-        
+         
         self.context_samples = context_samples
         self.batch_size = batch_size
         self.fs = sampling_rate
@@ -194,30 +189,33 @@ class DataGeneratorApnea(Sequence):
         return prior_prob
     
     def on_epoch_end(self):  
-        self.indexes = np.arange(len(self.samples))
+        self.indexes = np.arange(len(self.IDs))
         if self.shuffle:
             np.random.shuffle(self.indexes)
   
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return len(self.samples)//self.batch_size
+        return len(self.IDs)
     
     def __getitem__(self, index):
         """Generate one batch of data deterministically or randomly"""
-        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
-        list_IDs_temp = [self.samples[k] for k in indexes]
-
-        # Make list_IDs_temp an instance variable for error checking
-        self.list_IDs_temp = list_IDs_temp         
-        
-        return self.__data_generation(list_IDs_temp)
+        ID_idx = self.indexes[index]
+        return self.__data_generation(self.IDs[ID_idx])
             
     
-    def __data_generation(self,list_IDs_temp):
+    def __data_generation(self,ID):
         """Generate one batch of samples"""
+        # Load data
+        self.data = np.load(str(self.data_path.joinpath(ID + '.npy')))
+        
+        # Get indices of samples and randomly sample
+        ID_samples = list(filter(lambda x: x[0] == ID, self.samples))
+        np.random.shuffle(ID_samples)
+        ID_samples = ID_samples[:self.batch_size]
+    
         X = np.zeros((self.batch_size, *self.dim), dtype=np.float64)
         y = np.zeros((self.batch_size, self.n_classes))
-        for i, item in enumerate(list_IDs_temp):
+        for i, item in enumerate(ID_samples):
             ID, epoch, label = item
             features, label = self._sample(ID, epoch, label)
             X[i], y[i] = features, label
@@ -246,12 +244,10 @@ class DataGeneratorApnea(Sequence):
         if end_idx > end_sig_idx:
             right_pad = np.zeros((end_idx - end_sig_idx,self.n_channels))
             end_idx = end_sig_idx
+        
         x = np.zeros(self.dim)
         
-        if not self.load_all_data:
-            sig = np.load(file=str(self.data_path.joinpath(ID + '.npy')),mmap_mode='r')[start_idx:end_idx,:self.n_channels]
-        elif self.load_all_data:
-            sig = self.data[ID][start_idx:end_idx,:self.n_channels]
+        sig = self.data[start_idx:end_idx,:self.n_channels]
 
         if left_pad is None and right_pad is None:
             x = sig
@@ -266,17 +262,6 @@ class DataGeneratorApnea(Sequence):
         assert label >= 0, f'{label} less than zero!'
         y = np.eye(self.n_classes)[int(label)]
         #assert x.shape == self.dim, f"x shape {x.shape} does not match expected shape {self.dim}"
-        return x,y
-
-class DataGeneratorApneaRandom(DataGeneratorApnea):
-    def __init__(self, **args):
-        super().__init__(**args)
-    
-    def _sample(self, ID, center_idx):
-        """ Returns a random array for x and the y corresponding to the ID and epoch
-        """
-        x = np.random.random(self.dim)
-        y = np.eye(self.n_classes)[self.targets[ID][center_idx]]
         return x,y
 
 def check_data_generator(data_generator, index=0):
@@ -297,7 +282,7 @@ def check_data_generator(data_generator, index=0):
     
 
 if __name__ == "__main__":
-    dg = DataGeneratorApnea(data_path = '/Users/danielyaeger/Documents/raw_apnea_data',
+    dg = DataGeneratorApneaIDBatch(data_path = '/Users/danielyaeger/Documents/raw_apnea_data',
                                   mode = 'train',
                                   batch_size=128,
                                   shuffle = True,
