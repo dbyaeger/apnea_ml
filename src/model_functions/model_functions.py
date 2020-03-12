@@ -10,7 +10,7 @@ from tensorflow.keras.regularizers import l2
 from tensorflow.keras import Sequential, Input, Model, callbacks, layers
 from tensorflow.keras.layers import Dense, Conv1D, Dropout, Flatten
 from tensorflow.keras.layers import LSTM, Bidirectional
-from tensorflow.keras.layers import MaxPool1D, MaxPool2D
+from tensorflow.keras.layers import MaxPool1D
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D
 from tensorflow.keras.layers import BatchNormalization, Add, Activation
 from tensorflow.keras.optimizers import RMSprop, Adam
@@ -47,7 +47,7 @@ def _add_conv_layer(layer, n_filters, filter_size, l2_lambda = 0,
     if batch_norm:
         layer = BatchNormalization()(layer)
     if pool:
-        layer = pool(2)(layer)
+        layer = MaxPool1D(2)(layer)
     return layer
 
 def _add_lstm_layer(layer, units = 128, return_sequences = False, 
