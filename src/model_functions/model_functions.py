@@ -53,7 +53,7 @@ def _add_conv_layer(layer, n_filters, filter_size, stride=1,
         layer = pool(2)(layer)
     return layer
 
-def _add_lstm(layer, units = 128, return_sequences = False, 
+def _add_lstm_layer(layer, units = 128, return_sequences = False, 
               dropout_p = 0, input_shape = None):
     """
     Add an LSTM layer to network architecture
@@ -68,10 +68,12 @@ def _add_lstm(layer, units = 128, return_sequences = False,
     """
     if input_shape:
         layer = LSTM(input_shape=input_shape, units = units, 
-                     return_sequences = return_sequences, dropout = dropout_p)(layer)
+                     return_sequences = return_sequences, dropout = dropout_p,
+                     activation = 'sigmoid')(layer)
     else:
         layer = LSTM(units = units, 
-                     return_sequences = return_sequences, dropout = dropout_p)(layer)
+                     return_sequences = return_sequences, dropout = dropout_p,
+                     activation = 'sigmoid')(layer)
     return layer
 
 
@@ -109,22 +111,28 @@ def build_model(**params):
     OUTPUTS:
         compiled network
     """
-    conv_layers = params["conv_layers"]
-    fc_layers = params["fc_layers"]
-    lstm_layers = params["lstm_layers"]
+    if "conv_layers" in params:
+        conv_layers = params["conv_layers"]
+    
+    if "fc_layers" in params:
+        fc_layers = params["fc_layers"]
+    
+    if "lstm_layers" in params:
+        lstm_layers = params["lstm_layers"]
+        
     input_ = Input(shape=params["input_shape"])
     if params.get("learning_rate"):
         learning_rate = params["learning_rate"]
     else:
         learning_rate = 1e-3
     out = input_
-    if conv_layers:
+    if "conv_layers" in params:
         for i, p in enumerate(conv_layers):
             out = _add_conv_layer(out, *p)
         out = Flatten()(out)
-    elif lstm_layers:
+    if "lstm_layers" in params:
         for i, p in enumerate(lstm_layers):
-            out = _add_conv_layer(out, *p)
+            out = _add_lstm_layer(out, *p)
     for i, n in enumerate(fc_layers):
         if i < len(fc_layers) - 1:
             out = _add_dense_layer(out, n, activation="relu", dropout_p=0.5)

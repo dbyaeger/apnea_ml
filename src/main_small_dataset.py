@@ -15,7 +15,7 @@ import tensorflow as tf
 import datetime
 from tensorflow import keras
 from model_functions.model_functions import build_model
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, TensorBoard
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback, TensorBoard, ReduceLROnPlateau
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, f1_score, average_precision_score, accuracy_score
@@ -24,6 +24,49 @@ from data_generators.data_generator_apnea_test import DataGeneratorApneaTest
 import matplotlib.pyplot as plt
 from collections import defaultdict
 
+def test_wrapper(path = '/Users/danielyaeger/Documents/raw_a_b', K_FOLD = 3,
+                 out_path = '/Users/danielyaeger/Documents/raw_a_b'):
+    if not isinstance(path, Path): path = Path(path)
+    if not isinstance(out_path, Path): out_path = Path(out_path)
+    directories = [f for f in path.iterdir() if f.is_dir()]
+    
+    results_dict = {}
+    for directory in directories:
+        print(f'Analyzing {directory.name}')
+        IDs = set([f.name.split('.')[0] for f in directory.iterdir() if f.name.startswith('X')])
+        bal_acc = np.zeros(len(IDs))
+        for i, ID in enumerate(IDs):
+            tester = Main(ID=ID, K_FOLD=K_FOLD, data_path = str(directory))
+            bal_acc_for_ID = tester.main()
+            bal_acc[i] = bal_acc_for_ID
+            print(f'MEAN BALANCED ACCURACY FOR {ID}: {bal_acc_for_ID}')
+            del tester
+            gc.collect()          
+        results_dict[directory.name] = np.mean(bal_acc)
+        with out_path.joinpath('results_dict').open('wb') as fh:
+            pickle.dump(results_dict,fh)
+    
+    
+    return results_dict
+
+def test_wrapper_one_dir(path = '/Users/yaeger/Documents/datasets_a_b/raw_no_baseline_all', K_FOLD = 3,
+                 out_path = '/Users/yaeger/Documents/datasets_a_b/raw_no_baseline_all'):
+    if not isinstance(path, Path): path = Path(path)
+    if not isinstance(out_path, Path): out_path = Path(out_path)
+    IDs = [f.name.split('.')[0] for f in path.iterdir() if f.suffix == '.npy']
+    bal_acc = np.zeros(len(IDs))
+    for i, ID in enumerate(IDs):
+        print(f'Processing {ID}')
+        tester = Main(ID=ID, K_FOLD=K_FOLD, data_path = str(path))
+        bal_acc_for_ID = tester.main()
+        bal_acc[i] = bal_acc_for_ID
+        print(f'MEAN BALANCED ACCURACY FOR {ID}: {bal_acc_for_ID}')
+        del tester
+        gc.collect()
+    print(f'OVERALL MEAN BALANCED ACCURACY: {np.mean(bal_acc)}')         
+    with out_path.joinpath('results').open('wb') as fh:
+        pickle.dump(bal_acc,fh)
+    return bal_acc
 
 ########### Generators #################################################
 
@@ -74,13 +117,13 @@ class Main():
             ########### Make and print Model #############################################
             learning_rate = 1e-3
 
-            stopping = callbacks.EarlyStopping(patience=5)
+            stopping = EarlyStopping(patience=5)
 
-            reduce_lr = callbacks.ReduceLROnPlateau(factor=0.1,
+            reduce_lr = ReduceLROnPlateau(factor=0.1,
                                             patience=8,
                                             min_lr=1e-6)
 
-            model_checkpoint = callbacks.ModelCheckpoint(filepath='model.hdf5',
+            model_checkpoint = ModelCheckpoint(filepath='model.hdf5',
                                                  monitor='loss',
                                                  save_best_only=True)
 
@@ -91,9 +134,8 @@ class Main():
             "learning_rate":learning_rate
             }
 
-            metric = BalancedAccuracy()
             model = build_model(**params)
-            #model.summary()
+            model.summary()
 
 
             ########## Train Model #######################################################
@@ -141,3 +183,7 @@ class Main():
             except:
                 self.bal_acc[k] = np.nan
             print(f"\tFor ID: {self.ID}\tfold {k}: balanced accuracy: {self.bal_acc[k]}")
+
+if __name__ == "__main__":
+    test_wrapper_one_dir(path = '/Users/yaeger/Documents/datasets_a_b/raw_no_baseline_all', K_FOLD = 3,
+                 out_path = '/Users/yaeger/Documents/datasets_a_b/raw_no_baseline_all')

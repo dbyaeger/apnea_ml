@@ -43,8 +43,8 @@ def test_wrapper(path = '/Users/danielyaeger/Documents/raw_a_b', K_FOLD = 3,
     
     return results_dict
 
-def test_wrapper_one_dir(path = '/Users/danielyaeger/Documents/raw_no_baseline', K_FOLD = 3,
-                 out_path = '/Users/danielyaeger/Documents/raw_no_baseline'):
+def test_wrapper_one_dir(path = '/Users/yaeger/Documents/datasets_a_b/raw_no_baseline_all', K_FOLD = 3,
+                 out_path = '/Users/yaeger/Documents/datasets_a_b/raw_no_baseline_all'):
     if not isinstance(path, Path): path = Path(path)
     if not isinstance(out_path, Path): out_path = Path(out_path)
     IDs = [f.name.split('.')[0] for f in path.iterdir() if f.suffix == '.npy']
