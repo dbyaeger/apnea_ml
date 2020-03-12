@@ -6,6 +6,7 @@ Created on Wed Mar 11 14:20:03 2020
 @author: danielyaeger
 """
 from pathlib import Path
+#import talos as ta
 from model_functions.model_functions import build_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.models import load_model
@@ -63,7 +64,8 @@ class BayesTrainer():
                                     load_all_data = True,
                                     shuffle=True)
         
-        # Set parameters                            
+        # Set parameters
+        model_path = str(self.model_path.joinpath(f'model_{self.iterations}.hdf5'))                            
         learning_rate = 1e-3
         n_epoch =20
         stopping = EarlyStopping(patience=5)
@@ -72,7 +74,7 @@ class BayesTrainer():
                                         patience=8,
                                         min_lr=1e-6)
         
-        model_checkpoint = ModelCheckpoint(filepath=self.model_path.joinpath(f'model_{self.iterations}.hdf5'), 
+        model_checkpoint = ModelCheckpoint(filepath=model_path, 
                                              monitor='loss', 
                                              save_best_only=True)
         
@@ -100,7 +102,7 @@ class BayesTrainer():
                   verbose=1)
         
         # Evaluate balanced accuracy on best model
-        best_model = load_model(self.model_path.joinpath(f'model_{self.iterations}.hdf5'))
+        best_model = load_model(model_path)
         cv_generator =  DataGeneratorApnea(n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
