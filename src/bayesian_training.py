@@ -81,7 +81,7 @@ class BayesTrainer():
         "input_shape": train_generator.dim, 
         "conv_layers":[(64, int(round(conv_filter_size)), conv_layer_lambda)],
         "lstm_layers": [],
-        "fc_layers":[(int(round(fc_neurons)),dropout_rate,fc_layer_lambda),
+        "fc_layers":[(int(round(fc_neurons)),fc_layer_lambda,dropout_rate),
                      (train_generator.n_classes,None,None)],
         "learning_rate":learning_rate
         }
