@@ -38,11 +38,11 @@ def _add_conv_layer(layer, n_filters, filter_size, l2_lambda = 0,
         conv layer
     """
     if input_shape:
-        layer = Conv1D(n_filters, filter_size, kernel_regularizer = l2_lambda,
+        layer = Conv1D(n_filters, filter_size, kernel_regularizer = l2(l2_lambda),
                      stride=stride, input_shape=input_shape)(layer)
     else:
         layer = Conv1D(n_filters, filter_size, stride=stride, 
-                     kernel_regularizer = l2_lambda)(layer)
+                     kernel_regularizer = l2(l2_lambda))(layer)
     layer = Activation(activation)(layer)
     if batch_norm:
         layer = BatchNormalization()(layer)
@@ -87,7 +87,7 @@ def _add_dense_layer(layer, n_out, l2_lambda = None, dropout_p=None,
         dense layer
     """
     if l2_lambda:
-        layer = Dense(n_out, kernel_regularizer = l2_lambda)(layer)
+        layer = Dense(n_out, kernel_regularizer = l2(l2_lambda))(layer)
     else:
         layer = Dense(n_out)
     if activation:
