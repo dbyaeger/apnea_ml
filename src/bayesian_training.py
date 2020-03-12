@@ -87,6 +87,7 @@ class BayesTrainer():
         }
          
         model = build_model(**params)
+        model.summary()
         
         # Train
         model.fit(train_generator,
