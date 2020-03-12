@@ -60,6 +60,7 @@ class BayesTrainer():
                                     batch_size = 128,
                                     mode="cv",
                                     context_samples=300,
+                                    load_all_data = True,
                                     shuffle=True)
         
         # Set parameters                            
@@ -98,13 +99,14 @@ class BayesTrainer():
                   verbose=1)
         
         # Evaluate balanced accuracy on best model
-        best_model = load_model(model_path)
+        best_model = load_model(self.model_path.joinpath(f'model_{self.iterations}.hdf5'))
         cv_generator =  DataGeneratorApnea(n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
                                     mode="cv",
                                     context_samples=300,
-                                    shuffle=False)
+                                    shuffle=False,
+                                    load_all_data = True)
         y_pred = best_model.predict_generator(cv_generator)
         y_true = cv_generator.labels[:len(y_pred)]
         
