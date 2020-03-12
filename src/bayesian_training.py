@@ -70,8 +70,8 @@ class BayesTrainer():
         reduce_lr = ReduceLROnPlateau(factor=0.1,
                                         patience=8,
                                         min_lr=1e-6)
-        model_path = f'/Users/danielyaeger/Documents/Modules/apnea_ml/src/models/1_conv_2_fc/model_{self.iterations}.hdf5'
-        model_checkpoint = ModelCheckpoint(filepath=model_path, 
+        
+        model_checkpoint = ModelCheckpoint(filepath=self.model_path.joinpath(f'model_{self.iterations}.hdf5'), 
                                              monitor='loss', 
                                              save_best_only=True)
         
@@ -100,7 +100,7 @@ class BayesTrainer():
         # Evaluate balanced accuracy on best model
         best_model = load_model(model_path)
         cv_generator =  DataGeneratorApnea(n_classes = 2,
-                                    self.data_path = data_path,
+                                    data_path = self.data_path,
                                     batch_size = 128,
                                     mode="cv",
                                     context_samples=300,
