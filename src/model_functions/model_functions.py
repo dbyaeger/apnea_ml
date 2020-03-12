@@ -134,7 +134,7 @@ def build_model(**params):
     if "lstm_layers" in params:
         for i, p in enumerate(lstm_layers):
             out = _add_lstm_layer(out, *p)
-    for i, n in enumerate(fc_layers):
+    for i, p in enumerate(fc_layers):
         if i < len(fc_layers) - 1:
             out = _add_dense_layer(out, *p)
         else:
