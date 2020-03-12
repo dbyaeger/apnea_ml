@@ -39,9 +39,9 @@ def _add_conv_layer(layer, n_filters, filter_size, l2_lambda = 0,
     """
     if input_shape:
         layer = Conv1D(n_filters, filter_size, kernel_regularizer = l2(l2_lambda),
-                     stride=stride, input_shape=input_shape)(layer)
+                     strides=stride, input_shape=input_shape)(layer)
     else:
-        layer = Conv1D(n_filters, filter_size, stride=stride, 
+        layer = Conv1D(n_filters, filter_size, strides=stride, 
                      kernel_regularizer = l2(l2_lambda))(layer)
     layer = Activation(activation)(layer)
     if batch_norm:
