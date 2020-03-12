@@ -90,7 +90,7 @@ class BayesTrainer():
         model.summary()
         
         # Train
-        model.fit(train_generator,
+        model.fit_generator(train_generator,
                   validation_data=cv_generator,
                   use_multiprocessing=True,
                   workers=4,
