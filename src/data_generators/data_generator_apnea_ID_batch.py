@@ -166,15 +166,28 @@ class DataGeneratorApneaIDBatch(Sequence):
     
     @property
     def class_weights(self):
-        "Calculates class_weights"
-        class_counts = {}
-        # Get counts
-        for label in self.label_dict:
-            class_counts[self.label_dict[label]] = sum([1 for x in self.samples if x[-1] == self.label_dict[label]])
-        # Normalize to max_count
-        class_weights = {}
-        for label in class_counts:
-            class_weights[label] = max(list(class_counts.values()))/class_counts[label]
+        """Calculates class_weights assuming apnea/hypopnea and None as classes.
+        As sampling is per ID, weights for apnea/hypopnea are calculated as 
+        inverse of average imbalance ratio
+        
+                    (# apnea/hypopnea samples/# none samples)
+        across IDs
+        """
+        apnea_ratio = 0
+        # Get fraction by ID:
+        for ID in self.IDs:
+            ID_samples = list(filter(lambda x: x[0] == ID, self.samples))
+            apnea_sample_num = len(list(filter(lambda x: x[-1] > 0, ID_samples)))
+            none_sample_num = len(list(filter(lambda x: x[-1] == 0, ID_samples)))
+            
+            # calculate ratio of apneic to non-apneic events
+            apnea_ratio += apnea_sample_num/none_sample_num
+        
+        # Normalize to number of IDs
+        apnea_ratio = apnea_ratio/len(self.IDs)
+        
+        class_weights = {0: 1, 1: (1/apnea_ratio)}
+
         return class_weights
     
     @property    
