@@ -105,11 +105,13 @@ class HyperOptimizer():
         i = 1
         while i < (self.max_evals + 1):
             if self.trial_path.is_file():
+                print('Retrieving trials object')
                 with self.trial_path.open('rb') as fh:
                     self.bayes_trials = pickle.load(fh)
                 i = len(self.bayes_trials) + 1
                 self.optimize_helper(i)
             else:
+                print('No trials object found')
                 self.optimize_helper(i)
     
     def optimize_helper(self, max_evals: int):
@@ -119,7 +121,8 @@ class HyperOptimizer():
                     space = self.space, 
                     algo = tpe.suggest, 
                     trials = self.bayes_trials, 
-                    max_evals = max_evals)
+                    max_evals = max_evals,
+                    verbose = 0)
         print(best)
         
         with self.trial_path.open('wb') as fh:
@@ -184,7 +187,7 @@ class HyperOptimizer():
                   epochs=n_epoch,
                   class_weight=train_generator.class_weights,
                   callbacks=[stopping, reduce_lr, model_checkpoint],
-                  verbose=1)
+                  verbose=2)
         
         # Evaluate balanced accuracy on best model
         best_model = load_model(model_path)
