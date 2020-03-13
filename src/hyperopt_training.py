@@ -151,6 +151,9 @@ class HyperOptimizer():
                                     context_samples=300,
                                     load_all_data = True,
                                     shuffle=True)
+        # Print class weights
+        print(f'Class weights for training: {train_generator.class_weights}')
+        
         
         # Set parameters
         model_path = str(self.model_path.joinpath(f'{self.save_name}_{self.iteration}.hdf5'))                            
