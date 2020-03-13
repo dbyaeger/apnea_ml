@@ -67,8 +67,15 @@ class HyperOptimizer():
             
         self.max_evals = max_evals
         self.metric = metric
-        self.iteration = 0
-        self.bayes_trials = Trials()
+        
+        if self.trial_path.is_file():
+                print('Retrieving trials object')
+                with self.trial_path.open('rb') as fh:
+                    self.bayes_trials = pickle.load(fh)
+                self.iteration = len(self.bayes_trials)
+        else:
+            self.bayes_trials = Trials()
+            self.iteration = 0
         
         # How many steps to run before printing/saving
         self.step = 1
