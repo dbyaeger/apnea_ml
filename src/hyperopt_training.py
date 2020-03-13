@@ -61,7 +61,7 @@ class HyperOptimizer():
         self.trial_path = self.results_path.joinpath(self.save_name + '_trials')
         self.csv_path = self.results_path.joinpath(experiment_name + '.csv')
         
-        if not self.csv_path.isfile():
+        if not self.csv_path.is_file():
             with self.savepath.open('w') as fh:
                 writer = csv.writer(fh)
                 writer.writerow(['loss', 'params', 'iteration'])
@@ -105,7 +105,7 @@ class HyperOptimizer():
         """
         i = 1
         while i < (self.max_evals + 1):
-            if self.trial_path.isfile():
+            if self.trial_path.is_file():
                 with self.trial_path.open('rb') as fh:
                     self.bayes_trials = pickle.load(fh)
                 i = len(self.bayes_trials) + 1
