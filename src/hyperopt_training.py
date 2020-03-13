@@ -255,10 +255,5 @@ class HyperOptimizer():
         return path
 
 
-if __name__ == "__main__":
-    bayes = BayesTrainer()
-    optimizer = bayes.optimize()
-    for i, res in enumerate(optimizer.res):
-        print("Iteration {i}:\n\t{res}")
         
     
