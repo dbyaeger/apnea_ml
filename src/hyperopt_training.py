@@ -150,7 +150,7 @@ class HyperOptimizer():
                                     shuffle=True)
         
         # Set parameters
-        model_path = str(self.model_path.joinpath(f'{self.save_name}_{self.iterations}.hdf5'))                            
+        model_path = str(self.model_path.joinpath(f'{self.save_name}_{self.iteration}.hdf5'))                            
         learning_rate = 1e-3
         n_epoch =20
         stopping = EarlyStopping(patience=5)
