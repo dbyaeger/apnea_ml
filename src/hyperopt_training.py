@@ -31,13 +31,12 @@ class HyperOptimizer():
         results_path: where to save results
         experiment_name: name of files
         metric: metric to be optimizied on validation set
-        savepath: path or string to where results should be saved
         max_evals: how many iterations are allowed for finding best parameters
         variables: list of variables to optimize
         distributions: distributions to use for each variable (by order)
         arguments: arguments to each distribution-generating function as tuple
         
-    Builds a .csv file at the path specified by savepath which can be used to
+    Builds a .csv file at the path specified by results_path which can be used to
     find the best model parameters.
     
     Also has a results attribute which can also be used to find the best model
@@ -62,7 +61,7 @@ class HyperOptimizer():
         self.csv_path = self.results_path.joinpath(experiment_name + '.csv')
         
         if not self.csv_path.is_file():
-            with self.savepath.open('w') as fh:
+            with self.results_path.open('w') as fh:
                 writer = csv.writer(fh)
                 writer.writerow(['loss', 'params', 'iteration'])
             
