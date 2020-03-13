@@ -61,7 +61,7 @@ class HyperOptimizer():
         self.csv_path = self.results_path.joinpath(experiment_name + '.csv')
         
         if not self.csv_path.is_file():
-            with self.results_path.open('w') as fh:
+            with self.csv_path.open('w') as fh:
                 writer = csv.writer(fh)
                 writer.writerow(['loss', 'params', 'iteration'])
             
