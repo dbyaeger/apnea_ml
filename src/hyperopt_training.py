@@ -73,10 +73,12 @@ class HyperOptimizer():
                 with self.trial_path.open('rb') as fh:
                     self.bayes_trials = pickle.load(fh)
                 self.iteration = len(self.bayes_trials)
+                
         else:
             self.bayes_trials = Trials()
             self.iteration = 0
         
+        print(f'ITERATION: {self.iteration}')
         # How many steps to run before printing/saving
         self.step = 1
         
@@ -165,7 +167,7 @@ class HyperOptimizer():
         # Set parameters
         model_path = str(self.model_path.joinpath(f'{self.save_name}_{self.iteration}.hdf5'))                            
         learning_rate = 1e-3
-        n_epoch =20
+        n_epoch = 30
         stopping = EarlyStopping(patience=5)
 
         reduce_lr = ReduceLROnPlateau(factor=0.1,
