@@ -95,7 +95,7 @@ class HyperOptimizer():
         """Objective function for Hyperparameter optimization
         """
         self.iteration += 1
-        
+        print(params)
         # make sure parameters that must be integers are integers
         for parameter_name in ['conv_filter_num_one','conv_filter_size_one',  
                                'conv_filter_num_two','conv_filter_size_two',
