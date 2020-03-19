@@ -200,7 +200,7 @@ class DataGeneratorApnea(Sequence):
   
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return len(self.samples)//self.batch_size
+        return len(self.indexes)//self.batch_size
     
     def __getitem__(self, index):
         """Generate one batch of data deterministically or randomly"""
@@ -268,16 +268,25 @@ class DataGeneratorApnea(Sequence):
         #assert x.shape == self.dim, f"x shape {x.shape} does not match expected shape {self.dim}"
         return x,y
 
-class DataGeneratorApneaRandom(DataGeneratorApnea):
-    def __init__(self, **args):
+class DataGeneratorApneaRandomSubset(DataGeneratorApnea):
+    def __init__(self, percentage_to_sample: float = 0.2, **args):
         super().__init__(**args)
+        self.percentage = percentage_to_sample
     
-    def _sample(self, ID, center_idx):
-        """ Returns a random array for x and the y corresponding to the ID and epoch
-        """
-        x = np.random.random(self.dim)
-        y = np.eye(self.n_classes)[self.targets[ID][center_idx]]
-        return x,y
+    def on_epoch_end(self):  
+        self.indexes = np.arange(len(self.samples))
+        np.random.shuffle(self.indexes)
+        
+        # Get indices for positive and negative samples
+        apnea_indices = [x for x in self.indexes if self.samples[-1] > 0]
+        none_indices = [x for x in self.indexes if self.samples[-1] == 0]
+        
+        # Take same percentage of each
+        apnea_indices = apnea_indices[:int(len(apnea_indices)*self.percentage)]
+        none_indices = none_indices[:int(len(none_indices)*self.percentage)]
+        
+        # Combine arrays and convert to numpy array
+        self.indexes = np.array(apnea_indices + none_indices)
 
 def check_data_generator(data_generator, index=0):
     "Checks the output of the data generator"
