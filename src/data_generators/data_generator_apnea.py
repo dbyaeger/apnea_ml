@@ -270,8 +270,9 @@ class DataGeneratorApnea(Sequence):
 
 class DataGeneratorApneaRandomSubset(DataGeneratorApnea):
     def __init__(self, percentage_to_sample: float = 0.2, **args):
-        super().__init__(**args)
         self.percentage = percentage_to_sample
+        super().__init__(**args)
+        
     
     def on_epoch_end(self):  
         self.indexes = np.arange(len(self.samples))
