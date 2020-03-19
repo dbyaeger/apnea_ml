@@ -52,13 +52,13 @@ class HyperOptimizer():
                                     'conv_layer_lambda_three', 'conv_filter_num_three',
                                     'conv_filter_size_three',
                                     'fc_neurons', 'fc_layer_lambda'],
-                 distributions: list = ['loguniform','choice','choice', 'loguniform',
-                                        'choice','choice','loguniform','choice',
-                                        'choice','choice','loguniform'],
-                 arguments: list = [(1e-12,1),list(32*np.arange(1,9)), list(10*np.arange(1,31)),
-                                    (1e-12,1),list(32*np.arange(1,9)), list(np.arange(1,101)),
-                                    (1e-12,1), list(32*np.arange(1,9)), list(np.arange(1,13)),
-                                    list(32*np.arange(1,33)), (1e-12,1)]):
+                 distributions: list = ['loguniform','quniform','quniform', 'loguniform',
+                                        'quniform','quniform','loguniform','quniform',
+                                        'quniform','quniform','loguniform'],
+                 arguments: list = [(1e-12,1),(32,256,32), (10,300,10),
+                                    (1e-12,1),(32,256,32), (1,100,1),
+                                    (1e-12,1), (32,256,32), (1,12,1),
+                                    (32,1024,32), (1e-12,1)]):
 
         self.data_path = self.convert_to_path(data_path)
         self.model_path = self.convert_to_path(model_path)
@@ -95,7 +95,7 @@ class HyperOptimizer():
         """Objective function for Hyperparameter optimization
         """
         self.iteration += 1
-        print(params)
+
         # make sure parameters that must be integers are integers
         for parameter_name in ['conv_filter_num_one','conv_filter_size_one',  
                                'conv_filter_num_two','conv_filter_size_two',
