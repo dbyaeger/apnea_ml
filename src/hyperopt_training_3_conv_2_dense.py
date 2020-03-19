@@ -45,7 +45,7 @@ class HyperOptimizer():
     def __init__(self, data_path: str, model_path: str, results_path: str,
                  experiment_name: str = 'three_conv_two_dense',
                  metric: callable = balanced_accuracy_score,
-                 max_evals: int = 50,
+                 max_evals: int = 100,
                  variables: list = ['conv_layer_lambda_one', 'conv_filter_num_one',
                                     'conv_filter_size_one', 'conv_layer_lambda_two', 
                                     'conv_filter_num_two','conv_filter_size_two',
