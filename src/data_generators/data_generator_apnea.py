@@ -278,8 +278,8 @@ class DataGeneratorApneaRandomSubset(DataGeneratorApnea):
         np.random.shuffle(self.indexes)
         
         # Get indices for positive and negative samples
-        apnea_indices = [x for x in self.indexes if self.samples[-1] > 0]
-        none_indices = [x for x in self.indexes if self.samples[-1] == 0]
+        apnea_indices = [x for x in self.indexes if self.samples[x][-1] > 0]
+        none_indices = [x for x in self.indexes if self.samples[x][-1] == 0]
         
         # Take same percentage of each
         apnea_indices = apnea_indices[:int(len(apnea_indices)*self.percentage)]
