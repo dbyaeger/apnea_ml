@@ -5,20 +5,15 @@ Created on Mon Feb 24 15:02:09 2020
 
 @author: danielyaeger
 """
-import os
-import tensorflow as tf
-import tf.keras
-from tf.keras.backend import clear_session 
-from tf.keras.regularizers import l2
-from tf.keras import Sequential, Input, Model, callbacks, layers
-from tf.keras.layers import Dense, Conv1D, Dropout, Flatten
-from tf.keras.layers import LSTM, Bidirectional
-from tf.keras.layers import MaxPool1D
-from tf.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D
-from tf.keras.layers import BatchNormalization, Add, Activation
-from tf.keras.optimizers import RMSprop, Adam
-from tf.keras.losses import categorical_crossentropy
-from tf.keras.activations import relu, softmax, sigmoid
+
+from tensorflow import keras
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras import Input, Model
+from tensorflow.keras.layers import Dense, Conv1D, Dropout, Flatten
+from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import MaxPool1D
+from tensorflow.keras.layers import BatchNormalization, Activation
+from tensorflow.keras.optimizers import Adam
 
 ######### Functions for building network #####################################
 def _add_conv_layer(layer, n_filters, filter_size, l2_lambda = 0,
