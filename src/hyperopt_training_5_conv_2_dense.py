@@ -107,6 +107,8 @@ class HyperOptimizer():
         for parameter_name in ['conv_filter_num_one','conv_filter_size_one',  
                                'conv_filter_num_two','conv_filter_size_two',
                                'conv_filter_num_three', 'conv_filter_size_three',
+                               'conv_filter_num_four', 'conv_filter_size_four',
+                               'conv_filter_num_five', 'conv_filter_size_five'
                                'fc_neurons']:
             params[parameter_name] = int(params[parameter_name])
         
