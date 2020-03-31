@@ -14,10 +14,9 @@ from model_functions.model_functions import build_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.models import load_model
 from sklearn.metrics import balanced_accuracy_score
-from bayes_opt import BayesianOptimization
 from data_generators.data_generator_apnea_ID_batch import DataGeneratorApneaIDBatch
-from data_generators.data_generator_apnea import DataGeneratorApnea
-from hyperopt.hp import uniform, loguniform, quniform, lognormal
+from data_generators.data_generator_apnea import DataGeneratorApnea, DataGeneratorApneaRandomSubset
+from hyperopt.hp import uniform, loguniform, quniform, lognormal, choice
 from hyperopt import STATUS_OK
 from hyperopt import Trials, tpe, fmin
 
@@ -32,28 +31,41 @@ class HyperOptimizer():
         results_path: where to save results
         experiment_name: name of files
         metric: metric to be optimizied on validation set
-        savepath: path or string to where results should be saved
         max_evals: how many iterations are allowed for finding best parameters
         variables: list of variables to optimize
         distributions: distributions to use for each variable (by order)
         arguments: arguments to each distribution-generating function as tuple
         
-    Builds a .csv file at the path specified by savepath which can be used to
+    Builds a .csv file at the path specified by results_path which can be used to
     find the best model parameters.
     
     Also has a results attribute which can also be used to find the best model
     parameters.
     """
     def __init__(self, data_path: str, model_path: str, results_path: str,
-                 experiment_name: str = 'one_conv_two_dense',
+                 experiment_name: str = 'five_conv_two_dense',
                  metric: callable = balanced_accuracy_score,
-                 max_evals: int = 50,
-                 variables: list = ['dropout_rate', 'conv_layer_lambda', 'conv_filter_num',
-                                    'conv_filter_size', 'fc_neurons', 'fc_layer_lambda'],
-                 distributions: list = ['uniform','loguniform','quniform',
-                                        'quniform','quniform', 'loguniform'],
-                 arguments: list = [(0, 1),(1e-12,1),(16,256,1), (10,300,1),
-                                    (32,1024,1), (1e-12,1)]):
+                 max_evals: int = 100,
+                 variables: list = ['conv_layer_lambda_one', 'conv_filter_num_one',
+                                    'conv_filter_size_one', 'conv_layer_lambda_two', 
+                                    'conv_filter_num_two','conv_filter_size_two',
+                                    'conv_layer_lambda_three', 'conv_filter_num_three',
+                                    'conv_filter_size_three','conv_layer_lambda_four', 
+                                    'conv_filter_four', 'conv_filter_size_four',
+                                    'conv_layer_lambda_five', 'conv_filter_five', 
+                                    'conv_filter_size_five',
+                                    'fc_neurons', 'fc_layer_lambda'],
+                 distributions: list = ['loguniform','quniform','quniform', 'loguniform',
+                                        'quniform','quniform','loguniform','quniform',
+                                        'quniform','loguniform','quniform','quniform',
+                                        'loguniform','quniform','quniform','quniform',
+                                        'loguniform'],
+                 arguments: list = [(1e-16,1),(32,256,32), (1,100,1),
+                                    (1e-16,1),(32,256,32), (1,70,1),
+                                    (1e-16,1), (32,256,32), (1,70,1),
+                                    (1e-16,1), (32,256,32), (1,70,1),
+                                    (1e-16,1), (32,256,32), (1,40,1),
+                                    (32,1024,32), (1e-12,1)]):
 
         self.data_path = self.convert_to_path(data_path)
         self.model_path = self.convert_to_path(model_path)
@@ -62,15 +74,23 @@ class HyperOptimizer():
         self.trial_path = self.results_path.joinpath(self.save_name + '_trials')
         self.csv_path = self.results_path.joinpath(experiment_name + '.csv')
         
-        if not self.csv_path.isfile():
-            with self.savepath.open('w') as fh:
+        if not self.csv_path.is_file():
+            with self.csv_path.open('w') as fh:
                 writer = csv.writer(fh)
                 writer.writerow(['loss', 'params', 'iteration'])
             
         self.max_evals = max_evals
         self.metric = metric
-        self.iteration = 0
-        self.bayes_trials = Trials()
+        
+        if self.trial_path.is_file():
+                print('Retrieving trials object')
+                with self.trial_path.open('rb') as fh:
+                    self.bayes_trials = pickle.load(fh)
+                self.iteration = len(self.bayes_trials)
+                
+        else:
+            self.bayes_trials = Trials()
+            self.iteration = 0
         
         # How many steps to run before printing/saving
         self.step = 1
@@ -82,9 +102,12 @@ class HyperOptimizer():
         """Objective function for Hyperparameter optimization
         """
         self.iteration += 1
-        
+
         # make sure parameters that must be integers are integers
-        for parameter_name in ['conv_filter_num', 'conv_filter_size', 'fc_neurons']:
+        for parameter_name in ['conv_filter_num_one','conv_filter_size_one',  
+                               'conv_filter_num_two','conv_filter_size_two',
+                               'conv_filter_num_three', 'conv_filter_size_three',
+                               'fc_neurons']:
             params[parameter_name] = int(params[parameter_name])
         
         
@@ -106,12 +129,14 @@ class HyperOptimizer():
         """
         i = 1
         while i < (self.max_evals + 1):
-            if self.trial_path.isfile():
+            if self.trial_path.is_file():
+                print('Retrieving trials object')
                 with self.trial_path.open('rb') as fh:
                     self.bayes_trials = pickle.load(fh)
                 i = len(self.bayes_trials) + 1
                 self.optimize_helper(i)
             else:
+                print('No trials object found')
                 self.optimize_helper(i)
     
     def optimize_helper(self, max_evals: int):
@@ -121,15 +146,19 @@ class HyperOptimizer():
                     space = self.space, 
                     algo = tpe.suggest, 
                     trials = self.bayes_trials, 
-                    max_evals = max_evals)
+                    max_evals = max_evals,
+                    verbose = 0)
         print(best)
         
         with self.trial_path.open('wb') as fh:
             pickle.dump(self.bayes_trials, fh)
-                
     
-    def run_with(self,dropout_rate, conv_layer_lambda, conv_filter_num, 
-                 conv_filter_size, fc_neurons, fc_layer_lambda):
+    def run_with(self,conv_layer_lambda_one, conv_filter_num_one, conv_filter_size_one, 
+                 conv_layer_lambda_two, conv_filter_num_two, conv_filter_size_two,
+                 conv_layer_lambda_three, conv_filter_num_three, conv_filter_size_three,
+                 conv_layer_lambda_four, conv_filter_num_four, conv_filter_size_four,
+                 conv_layer_lambda_five, conv_filter_num_five, conv_filter_size_five,
+                 fc_neurons, fc_layer_lambda):
         """Builds a 1-conv layer, 2-dense layer neural net with specified parameters
         and trains. Returns metric result on cross val set.
         """
@@ -143,18 +172,23 @@ class HyperOptimizer():
                                     shuffle = True,
                                     desired_number_of_samples = 2.1e6)
         
-        cv_generator =  DataGeneratorApnea(n_classes = 2,
+        cv_generator =  DataGeneratorApneaRandomSubset(
+                                    percentage_to_sample = 0.2,
+                                    n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
                                     mode="cv",
                                     context_samples=300,
                                     load_all_data = True,
                                     shuffle=True)
+        # Print class weights
+        print(f'Class weights for training: {train_generator.class_weights}')
+        
         
         # Set parameters
-        model_path = str(self.model_path.joinpath(f'{self.save_name}_{self.iterations}.hdf5'))                            
+        model_path = str(self.model_path.joinpath(f'{self.save_name}_{self.iteration}.hdf5'))                            
         learning_rate = 1e-3
-        n_epoch =20
+        n_epoch = 30
         stopping = EarlyStopping(patience=5)
 
         reduce_lr = ReduceLROnPlateau(factor=0.1,
@@ -168,9 +202,13 @@ class HyperOptimizer():
         # build model
         params = {
         "input_shape": train_generator.dim, 
-        "conv_layers":[(conv_filter_num, conv_filter_size, conv_layer_lambda)],
+        "conv_layers":[(conv_filter_num_one, conv_filter_size_one, conv_layer_lambda_one, True),
+                       (conv_filter_num_two, conv_filter_size_two, conv_layer_lambda_two, False),
+                       (conv_filter_num_three, conv_filter_size_three, conv_layer_lambda_three, False),
+                       (conv_filter_num_four, conv_filter_size_four, conv_layer_lambda_four, False),
+                       (conv_filter_num_five, conv_filter_size_five, conv_layer_lambda_five, False)],
         "lstm_layers": [],
-        "fc_layers":[(fc_neurons,fc_layer_lambda,dropout_rate),
+        "fc_layers":[(fc_neurons,fc_layer_lambda,0.5),
                      (train_generator.n_classes,None,None)],
         "learning_rate":learning_rate
         }
@@ -186,7 +224,7 @@ class HyperOptimizer():
                   epochs=n_epoch,
                   class_weight=train_generator.class_weights,
                   callbacks=[stopping, reduce_lr, model_checkpoint],
-                  verbose=1)
+                  verbose=2)
         
         # Evaluate balanced accuracy on best model
         best_model = load_model(model_path)
@@ -256,122 +294,6 @@ class HyperOptimizer():
         
         return path
 
-class BayesTrainer():
-    """Wrapper class to optimize a model using Bayesian Optimization
-    package
-    """
-    def __init__(self, data_path: str, model_path: str, pbounds: dict = {'dropout_rate': (0.1,0.9),
-                 'conv_layer_lambda': (1e-4,1), 'conv_filter_size': (10,200),
-                 'fc_neurons': (32,512),'fc_layer_lambda': (1e-4,1)},
-                 init_points: int = 10, n_iter: int = 10):
-        
-        if not isinstance(data_path, Path): data_path = Path(data_path)
-        self.data_path = data_path
-        
-        if not isinstance(model_path, Path): model_path = Path(model_path)
-        self.model_path = model_path
-        
-        if not self.model_path.is_dir():
-            self.model_path.mkdir()
-            
-        self.pbounds = pbounds
-        self.init_points = init_points
-        self.n_iter = n_iter
-        self.iterations = -1
-        
-        
-    def fit_with(self,dropout_rate, conv_layer_lambda, conv_filter_size, fc_neurons, fc_layer_lambda):
-        """Builds a 1-conv layer, 2-dense layer neural net with specified 
-        """
-        # set iterations variable for model saving
-        self.iterations += 1
-            
-        #Make generators
-        train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
-                                    data_path = self.data_path,
-                                    batch_size = 128,
-                                    mode="train",
-                                    context_samples=300,
-                                    shuffle = True,
-                                    desired_number_of_samples = 2.1e6)
-        
-        cv_generator =  DataGeneratorApnea(n_classes = 2,
-                                    data_path = self.data_path,
-                                    batch_size = 128,
-                                    mode="cv",
-                                    context_samples=300,
-                                    load_all_data = True,
-                                    shuffle=True)
-        
-        # Set parameters
-        model_path = str(self.model_path.joinpath(f'model_{self.iterations}.hdf5'))                            
-        learning_rate = 1e-3
-        n_epoch =20
-        stopping = EarlyStopping(patience=5)
 
-        reduce_lr = ReduceLROnPlateau(factor=0.1,
-                                        patience=8,
-                                        min_lr=1e-6)
-        
-        model_checkpoint = ModelCheckpoint(filepath=model_path, 
-                                             monitor='loss', 
-                                             save_best_only=True)
-        
-        # build model
-        params = {
-        "input_shape": train_generator.dim, 
-        "conv_layers":[(64, int(round(conv_filter_size)), conv_layer_lambda)],
-        "lstm_layers": [],
-        "fc_layers":[(int(round(fc_neurons)),fc_layer_lambda,dropout_rate),
-                     (train_generator.n_classes,None,None)],
-        "learning_rate":learning_rate
-        }
-         
-        model = build_model(**params)
-        model.summary()
-        
-        # Train
-        model.fit_generator(generator=train_generator,
-                  validation_data=cv_generator,
-                  use_multiprocessing=True,
-                  workers=4,
-                  epochs=n_epoch,
-                  class_weight=train_generator.class_weights,
-                  callbacks=[stopping, reduce_lr, model_checkpoint],
-                  verbose=1)
-        
-        # Evaluate balanced accuracy on best model
-        best_model = load_model(model_path)
-        cv_generator =  DataGeneratorApnea(n_classes = 2,
-                                    data_path = self.data_path,
-                                    batch_size = 128,
-                                    mode="cv",
-                                    context_samples=300,
-                                    shuffle=False,
-                                    load_all_data = True)
-        y_pred = best_model.predict_generator(cv_generator)
-        y_true = cv_generator.labels[:len(y_pred)]
-        
-        score = balanced_accuracy_score(y_true, y_pred.argmax(-1))
-        
-        print(f'Balanced accuracy score: {score}')
-        
-        return score
-    
-    def optimize(self):
-        """Wrapper function for BayesianOptimization
-        """
-        optimizer = BayesianOptimization(f=self.fit_with, pbounds=self.pbounds,
-                                         verbose=2,random_state=1)
-        
-        optimizer.maximize(init_points=self.init_points, n_iter=self.n_iter)
-        
-        return optimizer
-
-if __name__ == "__main__":
-    bayes = BayesTrainer()
-    optimizer = bayes.optimize()
-    for i, res in enumerate(optimizer.res):
-        print("Iteration {i}:\n\t{res}")
         
     

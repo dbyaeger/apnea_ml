@@ -1,0 +1,13 @@
+*.hdf5
+*.p
+__pycache__
+.DS_Store
+*.html
+./src/__pycache__
+./src/utils/__pycache__
+./src/models
+./src/predictions
+.ipynb_checkpoints
+results
+models
+predictions
