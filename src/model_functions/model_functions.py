@@ -7,7 +7,7 @@ Created on Mon Feb 24 15:02:09 2020
 """
 import os
 import tensorflow as tf
-from tensorflow import keras
+import tf.keras
 from tf.keras.backend import clear_session 
 from tf.keras.regularizers import l2
 from tf.keras import Sequential, Input, Model, callbacks, layers
