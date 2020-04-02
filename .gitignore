@@ -11,3 +11,5 @@ __pycache__
 results
 models
 predictions
+./models
+./predictions
