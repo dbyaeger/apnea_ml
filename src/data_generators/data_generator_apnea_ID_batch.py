@@ -15,7 +15,7 @@ class DataGeneratorApneaIDBatch(Sequence):
     def __init__(self, data_path: str = '/Users/danielyaeger/Documents/raw_apnea_data',
                  batch_size: int = 64, mode: str = 'train', sampling_rate: int = 10, 
                  n_classes = 2, desired_number_of_samples = 2.1e6,
-                 use_staging = True,
+                 use_staging: bool = True,
                  context_samples: int = 300, shuffle: bool = False, 
                  single_ID = None, REM_only: bool = False):
 
@@ -223,7 +223,7 @@ class DataGeneratorApneaIDBatch(Sequence):
         
         # Get indices of samples and randomly sample
         ID_samples = list(filter(lambda x: x[0] == ID, self.samples))
-        np.random.shuffle(ID_samples)
+        batch_size = len(ID_samples)
         ID_samples = ID_samples[:self.batch_size]
     
         X = np.zeros((self.batch_size, *self.dim), dtype=np.float64)
@@ -277,7 +277,38 @@ class DataGeneratorApneaIDBatch(Sequence):
         #assert x.shape == self.dim, f"x shape {x.shape} does not match expected shape {self.dim}"
         return x,y
 
-def check_data_generator(data_generator, index=0):
+class DataGeneratorApneaAllWindows(DataGeneratorApneaIDBatch):
+    """Returns all of the data for each ID."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def __getitem__(self, index):
+        """Generate one batch of data deterministically or randomly"""
+        ID_idx = self.IDs[index]
+        return self.__data_generation(self.IDs[ID_idx])
+            
+    
+    def __data_generation(self,ID):
+        """Generate one batch of samples"""
+        # Load data
+        self.data = np.load(str(self.data_path.joinpath(ID + '.npy')))
+        
+        # Get indices of samples and randomly sample
+        ID_samples = list(filter(lambda x: x[0] == ID, self.samples))
+        
+        # Ensure samples are sorted by index
+        ID_samples.sort(key = lambda x: x[1])
+    
+        X = np.zeros((len(ID_samples), *self.dim), dtype=np.float64)
+        y = np.zeros((len(ID_samples), self.n_classes))
+        for i, item in enumerate(ID_samples):
+            ID, epoch, label = item
+            features, label = self._sample(ID, epoch, label)
+            X[i], y[i] = features, label
+
+        return X, y
+    
+    def check_data_generator(data_generator, index=0):
     "Checks the output of the data generator"
     targets = dg.targets
     x, y = dg.__getitem__(index)
