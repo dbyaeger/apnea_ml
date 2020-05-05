@@ -64,6 +64,7 @@ class HyperOptimizer():
                                         'quniform','loguniform','quniform','quniform',
                                         'loguniform','quniform','quniform',
                                         'loguniform','quniform','quniform',
+                                        'loguniform','quniform','quniform',
                                         'quniform',
                                         'loguniform'],
                  arguments: list = [(1e-16,1),(32,256,32), (1,100,1),
