@@ -309,21 +309,21 @@ class DataGeneratorApneaAllWindows(DataGeneratorApneaIDBatch):
         return X, y
     
     def check_data_generator(data_generator, index=0):
-    "Checks the output of the data generator"
-    targets = dg.targets
-    x, y = dg.__getitem__(index)
-    orders = dg.list_IDs_temp
-    for i,order in enumerate(orders):
-        ID, idx,label = order
-        print(f'order:{order}\ty:{int(y[i].argmax())}\ty_target:{int(targets[ID][idx])}')
-        assert idx <= len(targets[ID]), f"idx {idx} from outside of target[{ID}] of length {len(targets[ID])}"
-        assert targets[ID][idx] == y[i].argmax(), f"target is supposed to be {targets[ID][idx]} but it is {y[i].argmax()}"
-        assert len(y) == len(orders) == dg.batch_size, f"Batchsize is {dg.batch_size}\tlength of y: {len(y)}\tlength of orders: {len(orders)}"
-        #print(x)
-        # X = np.load(dg.data_path.joinpath(ID+'.npy'))
-        # X = X[idx - dg.context_samples:idx + dg.context_samples,:14]
-        # assert np.allclose(X,x[i,:,:]), f"idx: {idx}\nX: {X}\nx[{i}]: {x[i,:,:]}"
-    
+        "Checks the output of the data generator"
+        targets = dg.targets
+        x, y = dg.__getitem__(index)
+        orders = dg.list_IDs_temp
+        for i,order in enumerate(orders):
+            ID, idx,label = order
+            print(f'order:{order}\ty:{int(y[i].argmax())}\ty_target:{int(targets[ID][idx])}')
+            assert idx <= len(targets[ID]), f"idx {idx} from outside of target[{ID}] of length {len(targets[ID])}"
+            assert targets[ID][idx] == y[i].argmax(), f"target is supposed to be {targets[ID][idx]} but it is {y[i].argmax()}"
+            assert len(y) == len(orders) == dg.batch_size, f"Batchsize is {dg.batch_size}\tlength of y: {len(y)}\tlength of orders: {len(orders)}"
+            #print(x)
+            # X = np.load(dg.data_path.joinpath(ID+'.npy'))
+            # X = X[idx - dg.context_samples:idx + dg.context_samples,:14]
+            # assert np.allclose(X,x[i,:,:]), f"idx: {idx}\nX: {X}\nx[{i}]: {x[i,:,:]}"
+        
 
 if __name__ == "__main__":
     dg = DataGeneratorApneaIDBatch(data_path = '/Users/danielyaeger/Documents/raw_apnea_data',

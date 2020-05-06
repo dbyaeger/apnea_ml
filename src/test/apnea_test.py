@@ -35,7 +35,7 @@ def evaluate_and_predict(path_to_model: str, path_to_results: str,
     if not isinstance(path_to_model, Path):
         path_to_model = Path(path_to_model)
     
-    model_path = str(path_to_model.joinpath(f'{model_name}_{best_model_idx}hdf5'))
+    model_path = str(path_to_model.joinpath(f'{model_name}_{best_model_idx}.hdf5'))
     print(f'Best model path: {model_path}')
     
     best_model = load_model(model_path)
