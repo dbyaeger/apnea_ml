@@ -11,6 +11,7 @@ import numpy as np
 from tensorflow.keras.models import load_model
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 from data_generators.data_generator_apnea_ID_batch import DataGeneratorApneaAllWindows
+from utils.transition_matrix_tools import make_apnea_hypopnea_transition_matrix
 
 def evaluate_and_predict(path_to_model: str, path_to_results: str, 
                          path_to_data: str, model_name: str = 'five_conv_two_dense'):
@@ -66,7 +67,16 @@ def evaluate_and_predict(path_to_model: str, path_to_results: str,
         
     with path_to_results.joinpath(f'{model_name}_test_set_results.p').open('wb') as fh:
         pickle.dump(test_results_dict, fh)
-        
+
+#def correct_priors(results_path: str, results_file_name: str, prior_correction_method: callable):
+#    """Corrects the priors and saves 
+#    """
+#
+#def smooth_posteriors(results_path: str, results_file_name: str, path_to_data: str):
+#    """Smoothes posteriors using viterbi search. Also creates transition probability
+#    matrix if one does not exist in path_to_data. Saves the smoothed"""
+
+
         
         
         
