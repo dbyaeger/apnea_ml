@@ -16,7 +16,7 @@ class DataGeneratorApnea(Sequence):
                  batch_size: int = 64, mode: str = 'train', sampling_rate: int = 10, 
                  n_classes = 2, desired_number_of_samples = 2.1e6,
                  use_staging = True,
-                 context_samples: int = 300, shuffle: bool = False, 
+                 context_samples: int = 300, shuffle: bool = False,
                  load_all_data: bool = True, single_ID = None, REM_only: bool = False):
 
         assert mode in ['train', 'cv', 'test', 'val'], f'mode must be train, cv, val, or test, not {mode}'
@@ -158,6 +158,7 @@ class DataGeneratorApnea(Sequence):
                 for idx in range(self.targets[ID].shape[0]):
                     if self.targets[ID][idx] >= 0:
                         self.samples.append((ID, idx, int(self.targets[ID][idx])))
+            self.samples.sort(key = lambda x: (x[0], x[1]))
   
     @property
     def labels(self):

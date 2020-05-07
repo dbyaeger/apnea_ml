@@ -60,14 +60,14 @@ def evaluate_and_predict(path_to_model: str, path_to_results: str,
         test_gen = DataGeneratorApnea(n_classes = 2,
                                  data_path = path_to_data,
                                  single_ID = ID,
-                                 batch_size = 32,
+                                 batch_size = 8,
                                  mode="test",
                                  context_samples=300,
                                  shuffle = False,
                                  use_staging = True,
                                  REM_only = False)
         y = test_gen.labels
-        y_pred = best_model.predict_generator(DataGeneratorApnea,
+        y_pred = best_model.predict_generator(generator=test_gen,
                                               workers=4, 
                                               use_multiprocessing=True, 
                                               verbose=1)
@@ -75,12 +75,12 @@ def evaluate_and_predict(path_to_model: str, path_to_results: str,
         test_results_dict[ID]['predictions'] = y_pred[:len(y)]
         
         try:
-            test_results_dict[ID]['balanaced_accuracy'] = balanced_accuracy_score(y.argmax(-1),
+            test_results_dict[ID]['balanaced_accuracy'] = balanced_accuracy_score(y,
                                                       y_pred.argmax(-1))
         except:
              test_results_dict[ID]['balanaced_accuracy'] = np.nan
         
-        test_results_dict[ID]["confusion_matrix"] = confusion_matrix(y.argmax(-1),y_pred.argmax(-1))
+        test_results_dict[ID]["confusion_matrix"] = confusion_matrix(y,y_pred.argmax(-1))
         
         print(f"Balanced accuracy: {test_results_dict[ID]['balanaced_accuracy']}")
     
@@ -101,7 +101,12 @@ def correct_priors(results_path: str, results_file_name: str, prior_correction_m
     corrected_posteriors = {ID: {} for ID in posteriors}
     
     for ID in posteriors:
-        corrected_posteriors[ID] = prior_correction_method(posteriors[ID][])
+        corrected_posteriors[ID] = prior_correction_method(posteriors[ID]['predictions'],
+                                    train_priors)
+    
+    with path_to_results.joinpath(f'{model_name}_prior_corrected_test_set_results.p').open('wb') as fh:
+        pickle.dump(test_results_dict, fh)
+    
 
 def smooth_posteriors(results_path: str, results_file_name: str, path_to_data: str):
     """Smoothes posteriors using viterbi search. Also creates transition probability
