@@ -49,9 +49,9 @@ class HyperOptimizer():
                  experiment_name: str = 'five_conv_two_dense_best_num',
                  metric: callable = balanced_accuracy_score,
                  max_evals: int = 100,
-                 variables: list = ['desired_number_of_samples'],
-                 distributions: list = ['quniform'],
-                 arguments: list = [(0.5e6,30e6,1)]):
+                 variables: list = ['desired_number_of_samples', 'learning_rate'],
+                 distributions: list = ['quniform','loguniform'],
+                 arguments: list = [(0.5e6,30e6,1),(1e-7,1e-2)]):
 
         self.data_path = self.convert_to_path(data_path)
         self.model_path = self.convert_to_path(model_path)
@@ -135,7 +135,7 @@ class HyperOptimizer():
         with self.trial_path.open('wb') as fh:
             pickle.dump(self.bayes_trials, fh)
     
-    def run_with(self,desired_number_of_samples):
+    def run_with(self,desired_number_of_samples, learning_rate):
         """Builds a 1-conv layer, 2-dense layer neural net with specified parameters
         and trains. Returns metric result on cross val set.
         """
@@ -165,13 +165,12 @@ class HyperOptimizer():
         
         # Set parameters
         model_path = str(self.model_path.joinpath(f'{self.save_name}_{self.iteration}.hdf5'))                            
-        learning_rate = 1e-3
         n_epoch = 30
         stopping = EarlyStopping(patience=5)
 
         reduce_lr = ReduceLROnPlateau(factor=0.1,
                                         patience=8,
-                                        min_lr=1e-6)
+                                        min_lr=1e-7)
         
         model_checkpoint = ModelCheckpoint(filepath=model_path, 
                                              monitor='loss', 
@@ -223,7 +222,7 @@ class HyperOptimizer():
     def results(self):
         return self.bayes_trials.results
     
-    def build_model_from_params(best_model_params, train_generator, learning_rate):
+    def build_model_from_params(self, best_model_params, train_generator, learning_rate):
         """ Build a model and returns a model using the specified parameter
         dictionary"""
     
@@ -234,7 +233,7 @@ class HyperOptimizer():
             params["fc_layers"].extend([(best_model_params['fc_neurons'],
                                         best_model_params['fc_layer_lambda'],
                                         0.5),
-                                        (n_classes,None,None)])
+                                        (train_generator.n_classes,None,None)])
         except:
             params["fc_layers"].append((train_generator.n_classes,None,None))
         
