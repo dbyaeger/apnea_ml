@@ -121,7 +121,7 @@ class HyperOptimizer():
                 print('No trials object found')
                 self.optimize_helper(i)
     
-     def optimize_helper(self, max_evals: int):
+    def optimize_helper(self, max_evals: int):
         """ Wrapper method for fmin function in hyperopt package 
         """
         best = fmin(fn = self.objective, 
