@@ -160,7 +160,7 @@ class HyperOptimizer():
                                     load_all_data = True)
         # Print class weights
         print(f'Class weights for training: {train_generator.class_weights}')
-        print(f'Training data length: {len(train_generator})')
+        print(f'Training data length: {len(train_generator)}')
         
         
         # Set parameters
