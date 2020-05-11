@@ -241,15 +241,17 @@ class HyperOptimizer():
         for layer_num in ['one','two','three','four','five','six','seven']:
             try:
                 if layer_num == 'one':
-                    params["conv_layers"].append((params['conv_filter_num_one'],
-                                                  params['conv_filter_size_one'],
-                                                  params['conv_layer_lambda_one'],
-                                                  True))
+                    layer = (best_model_params['conv_filter_num_one'],
+                             best_model_params['conv_filter_size_one'],
+                             best_model_params['conv_layer_lambda_one'],
+                             True)
+                    params["conv_layers"].append(layer)
                 else:
-                    params["conv_layers"].append((params[f'conv_filter_num_{layer_num}'],
-                                                  params[f'conv_filter_size_{layer_num}'],
-                                                  params[f'conv_layer_lambda_{layer_num}'],
-                                                  False))
+                    layer = (best_model_params[f'conv_filter_num_{layer_num}'],
+                             best_model_params[f'conv_filter_size_{layer_num}'],
+                             best_model_params[f'conv_layer_lambda_{layer_num}'],
+                             False)
+                    params["conv_layers"].append(layer)
             except:
                 continue
         
