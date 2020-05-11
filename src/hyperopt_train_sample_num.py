@@ -228,36 +228,35 @@ class HyperOptimizer():
         """ Build a model and returns a model using the specified parameter
         dictionary"""
     
-    params = {"input_shape": dim, "lstm_layers": [], 
-              "learning_rate":learning_rate, "conv_layers": [],
-              "fc_layers": []}
-    try:
-        params["fc_layers"].extend([(best_model_params['fc_neurons'],
-                                    best_model_params['fc_layer_lambda'],
-                                    0.5),
-                                    (n_classes,None,None)])
-    except:
-        params["fc_layers"].append((n_classes,None,None))
-    
-    # build conv layers
-    for layer_num in ['one','two','three','four','five','six','seven']:
+        params = {"input_shape": dimension, "lstm_layers": [], 
+                  "learning_rate":learning_rate, "conv_layers": [],
+                  "fc_layers": []}
         try:
-            if layer_num == 'one':
-                params["conv_layers"].append((params['conv_filter_num_one'],
-                                              params['conv_filter_size_one'],
-                                              params['conv_layer_lambda_one'],
-                                              True))
-            else:
-                params["conv_layers"].append((params[f'conv_filter_num_{layer_num}'],
-                                              params[f'conv_filter_size_{layer_num}'],
-                                              params[f'conv_layer_lambda_{layer_num}'],
-                                              False))
+            params["fc_layers"].extend([(best_model_params['fc_neurons'],
+                                        best_model_params['fc_layer_lambda'],
+                                        0.5),
+                                        (n_classes,None,None)])
         except:
-            continue
-    
-    model = build_model(**params)
-    return model
+            params["fc_layers"].append((n_classes,None,None))
         
+        # build conv layers
+        for layer_num in ['one','two','three','four','five','six','seven']:
+            try:
+                if layer_num == 'one':
+                    params["conv_layers"].append((params['conv_filter_num_one'],
+                                                  params['conv_filter_size_one'],
+                                                  params['conv_layer_lambda_one'],
+                                                  True))
+                else:
+                    params["conv_layers"].append((params[f'conv_filter_num_{layer_num}'],
+                                                  params[f'conv_filter_size_{layer_num}'],
+                                                  params[f'conv_layer_lambda_{layer_num}'],
+                                                  False))
+            except:
+                continue
+        
+        return build_model(**params)
+            
     
     @staticmethod
     def create_domain_space(variables: list = ['C', 'gamma'], 
