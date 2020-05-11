@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import csv
 import pickle
-import ast
+#import ast
 from model_functions.model_functions import build_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.models import load_model
@@ -184,7 +184,7 @@ class HyperOptimizer():
 
         # Get the index of the saved best model
         results = sorted(results, key = lambda x: x['loss'])
-        best_model_params = ast.literal_eval(results[0]['params'])
+        best_model_params = results[0]['params']
         
         #Unpack parameters
         model = self.build_model_from_params(best_model_params,
