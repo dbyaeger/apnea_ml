@@ -184,13 +184,13 @@ class HyperOptimizer():
 
         # Get the index of the saved best model
         results = sorted(results, key = lambda x: x['loss'])
+        print(results[0])
         best_model_params = results[0]['params']
         
         #Unpack parameters
         model = self.build_model_from_params(best_model_params,
-                                             train_generator.dim,
-                                             learning_rate,
-                                             train_generator.n_classes)
+                                             train_generator,
+                                             learning_rate)
         model.summary()
         
         # Train
@@ -223,12 +223,11 @@ class HyperOptimizer():
     def results(self):
         return self.bayes_trials.results
     
-    def build_model_from_params(best_model_params, dimension, learning_rate,
-                                n_classes):
+    def build_model_from_params(best_model_params, train_generator, learning_rate):
         """ Build a model and returns a model using the specified parameter
         dictionary"""
     
-        params = {"input_shape": dimension, "lstm_layers": [], 
+        params = {"input_shape": train_generator.dim, "lstm_layers": [], 
                   "learning_rate":learning_rate, "conv_layers": [],
                   "fc_layers": []}
         try:
@@ -237,7 +236,7 @@ class HyperOptimizer():
                                         0.5),
                                         (n_classes,None,None)])
         except:
-            params["fc_layers"].append((n_classes,None,None))
+            params["fc_layers"].append((train_generator.n_classes,None,None))
         
         # build conv layers
         for layer_num in ['one','two','three','four','five','six','seven']:
