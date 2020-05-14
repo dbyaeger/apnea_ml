@@ -91,9 +91,6 @@ class HyperOptimizer():
         """Objective function for Hyperparameter optimization
         """
         self.iteration += 1
-
-        # make sure parameters that must be integers are integers
-        params['desired_number_of_samples'] = int(params['desired_number_of_samples'])
         
         # make metric_result negative for optimization
         metric_result = self.run_with(**params)
@@ -126,6 +123,7 @@ class HyperOptimizer():
     def optimize_helper(self, max_evals: int):
         """ Wrapper method for fmin function in hyperopt package 
         """
+        print(self.space)
         best = fmin(fn = self.objective, 
                     space = self.space, 
                     algo = tpe.suggest, 
@@ -178,6 +176,7 @@ class HyperOptimizer():
         model_path = str(self.model_path.joinpath(f'{self.save_name}_{self.iteration}.hdf5'))                            
         n_epoch = 30
         stopping = EarlyStopping(patience=5)
+        learning_rate = 1e-3
 
         reduce_lr = ReduceLROnPlateau(factor=0.1,
                                         patience=8,
