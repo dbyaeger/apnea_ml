@@ -14,8 +14,8 @@ class DataGeneratorApneaIDBatch(Sequence):
     'Data Generator for TensorFlow'
     def __init__(self, data_path: str = '/Users/danielyaeger/Documents/raw_apnea_data',
                  batch_size: int = 64, mode: str = 'train', sampling_rate: int = 10, 
-                 n_classes = 2, desired_number_of_samples = 2.1e6,
-                 use_staging: bool = True,
+                 n_classes = 2, desired_number_of_samples = 2.1e6, load_all_data: bool = True,
+                 use_staging: bool = True, select_channels: list = 'all',
                  context_samples: int = 300, shuffle: bool = False, 
                  single_ID = None, REM_only: bool = False):
 
@@ -27,7 +27,10 @@ class DataGeneratorApneaIDBatch(Sequence):
         
         with self.data_path.joinpath('channel_list.p').open('rb') as fcl:
             channel_list = pickle.load(fcl)
-            self.n_channels = len(channel_list)
+            if select_channels == 'all':
+                self.n_channels = len(channel_list)
+            else:
+                self.n_channels = len(select_channels)
         
         with self.data_path.joinpath('stage_dict.p').open('rb') as fs:
             self.stage_dict = pickle.load(fs)
@@ -49,11 +52,11 @@ class DataGeneratorApneaIDBatch(Sequence):
         elif mode == "test":
             self.IDs = partition["test"]
         
-        self.IDs = list(self.IDs)
-        
         self.single_ID = single_ID
         if single_ID is not None:
             assert type(single_ID) == str, 'Single ID {single_ID} must be a string!'
+            # Generate an error if single_ID is not in the given partition
+            assert single_ID in self.IDs, f'{single_ID} not in partition {mode}!'
             self.IDs = [single_ID]
             
             new_target = self.targets[single_ID]
@@ -90,11 +93,26 @@ class DataGeneratorApneaIDBatch(Sequence):
                             self.targets[ID][(epoch-1)*sampling_rate*30:epoch*sampling_rate*30] = -1
 
         self.inverse_label_dict = {self.label_dict[label]: label for label in self.label_dict}
-         
+        
+        self.load_all_data = load_all_data
+        if load_all_data:
+            self.data = {}
+            for ID in self.IDs:
+                self.data[ID] = np.load(str(self.data_path.joinpath(ID + '.npy')))
+                
+        
         self.context_samples = context_samples
         self.batch_size = batch_size
         self.fs = sampling_rate
         self.shuffle = shuffle
+        if isinstance(select_channels,list):
+            self.channel_idx = []
+            self.select_channels = select_channels
+            for channel in select_channels:
+                self.channel_idx.append(channel_list.index(channel))
+        elif select_channels == 'all':
+            self.channel_idx = np.arange(len(channel_list))
+            
                 
         self.dim = (2*context_samples + 1, self.n_channels)
         self.mode = mode
@@ -223,7 +241,6 @@ class DataGeneratorApneaIDBatch(Sequence):
         
         # Get indices of samples and randomly sample
         ID_samples = list(filter(lambda x: x[0] == ID, self.samples))
-        batch_size = len(ID_samples)
         ID_samples = ID_samples[:self.batch_size]
     
         X = np.zeros((self.batch_size, *self.dim), dtype=np.float64)

@@ -15,7 +15,7 @@ class DataGeneratorApnea(Sequence):
     def __init__(self, data_path: str = '/Users/danielyaeger/Documents/raw_apnea_data',
                  batch_size: int = 64, mode: str = 'train', sampling_rate: int = 10, 
                  n_classes = 2, desired_number_of_samples = 2.1e6,
-                 use_staging = True,
+                 use_staging = True, select_channels: list = 'all',
                  context_samples: int = 300, shuffle: bool = False,
                  load_all_data: bool = True, single_ID = None, REM_only: bool = False):
 
@@ -27,7 +27,10 @@ class DataGeneratorApnea(Sequence):
         
         with self.data_path.joinpath('channel_list.p').open('rb') as fcl:
             channel_list = pickle.load(fcl)
-            self.n_channels = len(channel_list)
+            if select_channels == 'all':
+                self.n_channels = len(channel_list)
+            else:
+                self.n_channels = len(select_channels)
         
         with self.data_path.joinpath('stage_dict.p').open('rb') as fs:
             self.stage_dict = pickle.load(fs)
@@ -102,6 +105,14 @@ class DataGeneratorApnea(Sequence):
         self.batch_size = batch_size
         self.fs = sampling_rate
         self.shuffle = shuffle
+        if isinstance(select_channels,list):
+            self.channel_idx = []
+            self.select_channels = select_channels
+            for channel in select_channels:
+                self.channel_idx.append(channel_list.index(channel))
+        elif select_channels == 'all':
+            self.channel_idx = np.arange(len(channel_list))
+            
                 
         self.dim = (2*context_samples + 1, self.n_channels)
         self.mode = mode
@@ -252,9 +263,9 @@ class DataGeneratorApnea(Sequence):
         x = np.zeros(self.dim)
         
         if not self.load_all_data:
-            sig = np.load(file=str(self.data_path.joinpath(ID + '.npy')),mmap_mode='r')[start_idx:end_idx,:self.n_channels]
+            sig = np.load(file=str(self.data_path.joinpath(ID + '.npy')),mmap_mode='r')[start_idx:end_idx,self.channel_idx]
         elif self.load_all_data:
-            sig = self.data[ID][start_idx:end_idx,:self.n_channels]
+            sig = self.data[ID][start_idx:end_idx,self.channel_idx]
 
         if left_pad is None and right_pad is None:
             x = sig

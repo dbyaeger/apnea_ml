@@ -9,11 +9,14 @@ import pickle
 from pathlib import Path
 import pandas as pd
 import numpy as np
-import sklearn.metrics
+from sklearn.metrics import (balanced_accuracy_score, accuracy_score, f1_score,
+                             cohen_kappa_score)
 import re
 
-def evaluate(data_dictionary: list, metrics: list, data_path: str,
+def evaluate(data_dictionary: list, data_path: str,
              stage_file: str, save_path: str, save_name: str,
+             metrics: list = [balanced_accuracy_score, accuracy_score, f1_score,
+                             cohen_kappa_score],
              apnea_threshold_for_epoch: float = 0.1, sampling_rate: int = 10, 
              epoch_length: int = 30) -> pd.DataFrame:
     """Evaluates the data in the data dictionary using the supplied list of metrics.
@@ -103,14 +106,6 @@ def evaluate(data_dictionary: list, metrics: list, data_path: str,
     
     return results_df
                 
-                
-            
-                
-                
-            
-            
-        
-        
 
 def get_targets_and_predictions(ID: str,
                                 predictions: np.ndarray,
