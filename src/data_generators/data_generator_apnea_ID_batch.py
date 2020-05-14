@@ -52,6 +52,8 @@ class DataGeneratorApneaIDBatch(Sequence):
         elif mode == "test":
             self.IDs = partition["test"]
         
+        self.IDs = list(self.IDs)
+        
         self.single_ID = single_ID
         if single_ID is not None:
             assert type(single_ID) == str, 'Single ID {single_ID} must be a string!'
