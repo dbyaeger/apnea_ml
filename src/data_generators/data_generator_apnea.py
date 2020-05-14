@@ -52,6 +52,8 @@ class DataGeneratorApnea(Sequence):
         self.single_ID = single_ID
         if single_ID is not None:
             assert type(single_ID) == str, 'Single ID {single_ID} must be a string!'
+            # Generate an error if single_ID is not in the given partition
+            assert single_ID in self.IDs, f'{single_ID} not in partition {mode}!'
             self.IDs = [single_ID]
             
             new_target = self.targets[single_ID]

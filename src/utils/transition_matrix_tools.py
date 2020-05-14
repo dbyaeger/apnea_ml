@@ -10,123 +10,124 @@ import numpy as np
 import pickle
 from pathlib import Path
 import pandas as pd
-from autoscorer.autoscorer_helpers import convert_to_sequence
+from collections import Counter
+#from autoscorer.autoscorer_helpers import convert_to_sequence
 
-def make_rswa_transition_matrix(path_to_p_files: str = '/Volumes/TOSHIBA EXT/artifact_reduced_emg_data', 
-                                partitions: list = ['train'], 
-                                partition_file_name: str = 'master_ID_list.p',
-                                to_save: bool = True, epoch_length: int = 30,
-                                sampling_rate: int = 10):
-    """Builds transition matrix for P, T, and None events. Only calculates 
-    transition matrix for REM epochs in the partitions that DO NOT contain 
-    apnea/hypopnea events.
-    
-    INPUTS:
-        path_to_files: path to the directory containing .p files, formatted as
-        specified below:
-            
-            {
-                    "ID":ID,
-                    "study_start_time":study_start_time,
-                    "staging":[(start_time, end_time, stage) for nrem and rem],
-                    "apnia_hypopnia_events": [(start_time, end_time, type) w.r.t. apnia_hypopnia_events],
-                    "rswa_events":[(start_time, end_time, type) w.r.t. rsw_events],
-                    "signals":{"signal_name":[raw_signal] w.r.t. all signals}
-                }
-            EXPECTS A PARTITION FILE IN THE SAME DIRECTORY AS .P FILES
-    
-        parititions: list of partitions to use when creating transition matrix,
-            by default set to train only.
-        
-        partition_file_name: name of partition file in path_to_p_files directory
-        
-    PARAMETERS:
-        to_save: set to True to save transition matrix as a .npy file
-        
-        epoch_length: lenght of epoch in seconds, set to 30 by default
-        
-        sampling_rate: rate at which RSWA labels are classified, by default set
-            to 10
-    
-    RETURNS:
-        transition_df: pandas dataframe with rows that indicate state i and 
-        columns that show state i - 1. The count for each transition is shown.
-        
-        transition_matrix: numpy array. Same information as in transition_df,
-            but counts have been converted to transition probabilites.
-            
-    """
-    if not isinstance(path_to_p_files, Path):
-        path_to_p_files = Path(path_to_p_files)
-        
-    with path_to_p_files.joinpath(partition_file_name).open('rb') as fh:
-        partition_file = pickle.load(fh)
-    
-    # Get unique IDs
-    unique_IDs = []
-    for partition in partitions:
-        unique_IDs.extend(list(partition_file[partition]))
-    
-    # Get files
-    files = [f for f in path_to_p_files.iterdir() if f.name.split('_')[0] in unique_IDs]
-    
-    # Create transition matrix
-    label_map = {0:'0', 1:'P', 2:'T'}
-    transition_dictionary = {label_map[label]: {label_map[label]: 0 for label in label_map} for label in label_map}
-    
-    for file in files:
-        #print(f'Processing file: {file.name}')
-        with file.open('rb') as fh: 
-            data = pickle.load(fh)
-        
-        rem_time = [x for x in data["staging"] if x[-1] == 'R'][0]
-        #print(f'\tREM time: {rem_time}')
-        rswa_seq = convert_to_sequence(event_list = data["rswa_events"], 
-                                       start_time = rem_time[0],
-                                       end_time = rem_time[1])
-        #print(f'\tLength of rswa_seq: {len(rswa_seq)}')
-        
-        epoch_start = rem_time[0]//epoch_length
-        #print(f'\tepoch_start: {epoch_start}')
-        epoch_end = rem_time[1]//epoch_length
-        #print(f'\tepoch_end: {epoch_end}')
-        
-        for i, epoch in enumerate(range(epoch_start,epoch_end)):
-            epoch_start_time = epoch*epoch_length
-            epoch_end_time = (epoch + 1)*epoch_length
-            
-            #print(f'\t\tepoch_start_time: {epoch_start_time}')
-            #print(f'\t\tepoch_end_time: {epoch_end_time}')
-            # Create flag for apnea/hypopnea
-            apnea_free = True
-            
-            # Screen for apnea/hypopnea
-            for event in data["apnia_hypopnia_events"]:
-                if event[0] <= epoch_end_time <= event[1]: 
-                    apnea_free = False
-                    #print(f'\t\t\tInterloping A/H event found: {event}')
-                elif epoch_start_time <= event[1] <= epoch_end_time:
-                    apnea_free = False
-                    #print(f'\t\t\tInterloping A/H event found: {event}')
-            
-            if apnea_free == True:
-                for idx in range(i*epoch_length*sampling_rate,(i+1)*epoch_length*sampling_rate):
-                    if idx > 0:
-                        curr_label = label_map[rswa_seq[idx]]
-                        past_label = label_map[rswa_seq[idx-1]]
-                        transition_dictionary[curr_label][past_label] += 1
-
-    transition_df = pd.DataFrame.from_dict(transition_dictionary).T
-    
-    # Convert to normalized numpy array
-    transition_matrix = np.array(transition_df)/np.sum(transition_df, axis = 1)[:,np.newaxis]
-   
-    # Save matrix and normalized initial stage probability
-    if to_save:
-        np.save(str(path_to_p_files.joinpath(f'rswa_event_transition_matrix')),transition_matrix)
-        
-    return transition_df, transition_matrix
-                        
+#def make_rswa_transition_matrix(path_to_p_files: str = '/Volumes/TOSHIBA EXT/artifact_reduced_emg_data', 
+#                                partitions: list = ['train'], 
+#                                partition_file_name: str = 'master_ID_list.p',
+#                                to_save: bool = True, epoch_length: int = 30,
+#                                sampling_rate: int = 10):
+#    """Builds transition matrix for P, T, and None events. Only calculates 
+#    transition matrix for REM epochs in the partitions that DO NOT contain 
+#    apnea/hypopnea events.
+#    
+#    INPUTS:
+#        path_to_files: path to the directory containing .p files, formatted as
+#        specified below:
+#            
+#            {
+#                    "ID":ID,
+#                    "study_start_time":study_start_time,
+#                    "staging":[(start_time, end_time, stage) for nrem and rem],
+#                    "apnia_hypopnia_events": [(start_time, end_time, type) w.r.t. apnia_hypopnia_events],
+#                    "rswa_events":[(start_time, end_time, type) w.r.t. rsw_events],
+#                    "signals":{"signal_name":[raw_signal] w.r.t. all signals}
+#                }
+#            EXPECTS A PARTITION FILE IN THE SAME DIRECTORY AS .P FILES
+#    
+#        parititions: list of partitions to use when creating transition matrix,
+#            by default set to train only.
+#        
+#        partition_file_name: name of partition file in path_to_p_files directory
+#        
+#    PARAMETERS:
+#        to_save: set to True to save transition matrix as a .npy file
+#        
+#        epoch_length: lenght of epoch in seconds, set to 30 by default
+#        
+#        sampling_rate: rate at which RSWA labels are classified, by default set
+#            to 10
+#    
+#    RETURNS:
+#        transition_df: pandas dataframe with rows that indicate state i and 
+#        columns that show state i - 1. The count for each transition is shown.
+#        
+#        transition_matrix: numpy array. Same information as in transition_df,
+#            but counts have been converted to transition probabilites.
+#            
+#    """
+#    if not isinstance(path_to_p_files, Path):
+#        path_to_p_files = Path(path_to_p_files)
+#        
+#    with path_to_p_files.joinpath(partition_file_name).open('rb') as fh:
+#        partition_file = pickle.load(fh)
+#    
+#    # Get unique IDs
+#    unique_IDs = []
+#    for partition in partitions:
+#        unique_IDs.extend(list(partition_file[partition]))
+#    
+#    # Get files
+#    files = [f for f in path_to_p_files.iterdir() if f.name.split('_')[0] in unique_IDs]
+#    
+#    # Create transition matrix
+#    label_map = {0:'0', 1:'P', 2:'T'}
+#    transition_dictionary = {label_map[label]: {label_map[label]: 0 for label in label_map} for label in label_map}
+#    
+#    for file in files:
+#        #print(f'Processing file: {file.name}')
+#        with file.open('rb') as fh: 
+#            data = pickle.load(fh)
+#        
+#        rem_time = [x for x in data["staging"] if x[-1] == 'R'][0]
+#        #print(f'\tREM time: {rem_time}')
+#        rswa_seq = convert_to_sequence(event_list = data["rswa_events"], 
+#                                       start_time = rem_time[0],
+#                                       end_time = rem_time[1])
+#        #print(f'\tLength of rswa_seq: {len(rswa_seq)}')
+#        
+#        epoch_start = rem_time[0]//epoch_length
+#        #print(f'\tepoch_start: {epoch_start}')
+#        epoch_end = rem_time[1]//epoch_length
+#        #print(f'\tepoch_end: {epoch_end}')
+#        
+#        for i, epoch in enumerate(range(epoch_start,epoch_end)):
+#            epoch_start_time = epoch*epoch_length
+#            epoch_end_time = (epoch + 1)*epoch_length
+#            
+#            #print(f'\t\tepoch_start_time: {epoch_start_time}')
+#            #print(f'\t\tepoch_end_time: {epoch_end_time}')
+#            # Create flag for apnea/hypopnea
+#            apnea_free = True
+#            
+#            # Screen for apnea/hypopnea
+#            for event in data["apnia_hypopnia_events"]:
+#                if event[0] <= epoch_end_time <= event[1]: 
+#                    apnea_free = False
+#                    #print(f'\t\t\tInterloping A/H event found: {event}')
+#                elif epoch_start_time <= event[1] <= epoch_end_time:
+#                    apnea_free = False
+#                    #print(f'\t\t\tInterloping A/H event found: {event}')
+#            
+#            if apnea_free == True:
+#                for idx in range(i*epoch_length*sampling_rate,(i+1)*epoch_length*sampling_rate):
+#                    if idx > 0:
+#                        curr_label = label_map[rswa_seq[idx]]
+#                        past_label = label_map[rswa_seq[idx-1]]
+#                        transition_dictionary[curr_label][past_label] += 1
+#
+#    transition_df = pd.DataFrame.from_dict(transition_dictionary).T
+#    
+#    # Convert to normalized numpy array
+#    transition_matrix = np.array(transition_df)/np.sum(transition_df, axis = 1)[:,np.newaxis]
+#   
+#    # Save matrix and normalized initial stage probability
+#    if to_save:
+#        np.save(str(path_to_p_files.joinpath(f'rswa_event_transition_matrix')),transition_matrix)
+#        
+#    return transition_df, transition_matrix
+#                        
  
 def make_apnea_hypopnea_transition_matrix(path_to_npy_files: str = '/Users/danielyaeger/Documents/raw_apnea_data',
                                                 partitions: list = ['train'],
@@ -139,7 +140,7 @@ def make_apnea_hypopnea_transition_matrix(path_to_npy_files: str = '/Users/danie
     if not isinstance(path_to_npy_files, Path):
         path_to_npy_files = Path(path_to_npy_files)
         
-    with path_to_npy_files.joinpath('ID_partitions.p').open('rb') as fh:
+    with path_to_npy_files.joinpath('master_ID_list.p').open('rb') as fh:
         partition_file = pickle.load(fh)
     
     with path_to_npy_files.joinpath('stage_dict.p').open('rb') as fh:
@@ -165,12 +166,13 @@ def make_apnea_hypopnea_transition_matrix(path_to_npy_files: str = '/Users/danie
                 targets[ID][idx] = 1  
     
     transition_dictionary = {label_map[label]: {label_map[label]: 0 for label in label_map} for label in label_map}
+    initial_list = []
     for ID in unique_IDs:
         for epoch in stage_dict[ID]:
             if epoch in ['R','1','2','3']:
-                for i,idx in enumerate(np.arange((epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length)):
+                for i,idx in enumerate(np.arange((epoch-1)*sampling_rate*epoch_length,epoch*sampling_rate*epoch_length)):
                     if stage_dict[ID][epoch-1] not in ['R','1','2','3'] and i == 0:
-                        continue
+                        initial_list.append(targets[ID][idx])
                     else:
                         curr_label = label_map[targets[ID][idx]]
                         past_label = label_map[targets[ID][idx-1]]
@@ -178,14 +180,20 @@ def make_apnea_hypopnea_transition_matrix(path_to_npy_files: str = '/Users/danie
 
     transition_df = pd.DataFrame.from_dict(transition_dictionary).T
     
+    # Convert counts to probabilities
+    initial_count = Counter(initial_list)
+    initial_probs = {initial_count[key]/sum(list(initial_count.values())) for key in initial_count}
+    
     # Convert to normalized numpy array
     transition_matrix = np.array(transition_df)/np.sum(transition_df, axis = 1)[:,np.newaxis]
-    print(f'transition matrix:\n {transition_matrix}')
     
     # Save matrix and normalized initial stage probability
     if to_pickle:
         with path_to_npy_files.joinpath(f'apnea_hypopnea_transition_matrix').open('wb') as fout:
             pickle.dump(transition_matrix, fout)
+        
+        with path_to_npy_files.joinpath(f'apnea_hypopnea_initial_probabilites').open('wb') as fi:
+            pickle.dump(initial_probs, fi)
         
     return transition_df, transition_matrix
                 

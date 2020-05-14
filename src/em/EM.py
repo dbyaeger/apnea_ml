@@ -58,7 +58,8 @@ def mstep(posteriors: np.ndarray) -> np.ndarray:
     return posteriors.sum(axis=0)/N
 
 
-def run(train_posterior: np.ndarray, train_prior: np.ndarray) -> (np.ndarray, np.ndarray):
+def run(train_posterior: np.ndarray, train_prior: np.ndarray,
+        maxIters: int = 10) -> (np.ndarray, np.ndarray):
     """Implements the EM algorithm in "Adjusting the outputs of a classifier to
     new a priori probabilities: A simple procedure" by Saerens, Latinne, and 
     Decaestecker. Returns the posteriors and priors which maximize the log
@@ -75,13 +76,18 @@ def run(train_posterior: np.ndarray, train_prior: np.ndarray) -> (np.ndarray, np
         new_priors: (k,) array holding the updated priors
         
     """
-    prev_cost = None
+    priors = train_prior.copy()
+    prev_priors = None
     # Initially set priors to train_priors
-    posteriors, cost = estep(train_posterior = train_posterior, prior = train_prior,
+    posteriors, _ = estep(train_posterior = train_posterior, prior = train_prior,
           train_prior = train_prior)
-    while (prev_cost is None or cost - prev_cost > (1e-6)*np.abs(cost)):
-        prev_cost = cost
+    iteration = 1
+    while (prev_priors is None or (np.abs(prev_priors-priors) >= (0.01)*prev_priors).any()):
+        prev_priors = priors.copy()
         priors = mstep(posteriors)
         posteriors, cost = estep(train_posterior = train_posterior, prior = priors,
           train_prior = train_prior)
+        print(f'Iteration: {iteration}\tCost: {cost}\tPriors: {priors}')
+        if iteration >= maxIters: break
+        iteration += 1
     return posteriors, priors
