@@ -123,7 +123,7 @@ class HyperOptimizer():
     def optimize_helper(self, max_evals: int):
         """ Wrapper method for fmin function in hyperopt package 
         """
-        print(self.space)
+        #print(self.space)
         best = fmin(fn = self.objective, 
                     space = self.space, 
                     algo = tpe.suggest, 
@@ -303,6 +303,8 @@ class HyperOptimizer():
             elif distributions[i] == 'quniform':
                 (low, high, q) = arguments[i]
                 space[variable] = quniform(variable,low,high,q)
+            elif distributions[i] == 'choice':
+                space[variable] = choice(variable, arguments[i])
         return space
     
     @staticmethod
