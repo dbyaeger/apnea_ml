@@ -47,7 +47,7 @@ class HyperOptimizer():
     """
     def __init__(self, data_path: str, model_path: str, results_path: str,
                  model_specs_path: str, model_name: str,
-                 experiment_name: str = 'five_conv_two_dense_best_channels',
+                 experiment_name: str = 'five_conv_two_dense_best_channels2',
                  metric: callable = balanced_accuracy_score,
                  max_evals: int = 100,
                  variables: list = ['Abdomen', 'Airflow', 'Chest', 'ECG', 'P_Flo', 'SpO2'],
@@ -158,7 +158,7 @@ class HyperOptimizer():
                                     shuffle = True,
                                     load_all_data = True)
         
-        cv_generator =  DataGeneratorApnea(
+        cv_generator =  DataGeneratorApneaRandomSubset(
                                     n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
@@ -170,6 +170,9 @@ class HyperOptimizer():
         # Print class weights
         print(f'Class weights for training: {train_generator.class_weights}')
         print(f'Training data length: {len(train_generator)}')
+        print(f'Select channel list: {train_generator.select_channels}')
+        print(f'Channel index: {train_generator.channel_idx}')
+        print('Sample data: {train_generator.__getitem__(0)[0]}')
         
         
         # Set parameters
