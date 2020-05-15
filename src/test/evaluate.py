@@ -15,9 +15,8 @@ import re
 
 def evaluate(data_dictionary: list, data_path: str,
               save_path: str, save_name: str,
-             metrics: list = [balanced_accuracy_score, accuracy_score,
-                             cohen_kappa_score], stage_file: str = 'stage_dict.p',
-             apnea_threshold_for_epoch: float = 0.1, sampling_rate: int = 10, 
+             metrics: list = [balanced_accuracy_score, accuracy_score], stage_file: str = 'stage_dict.p',
+             apnea_threshold_for_epoch: float = 10, sampling_rate: int = 10, 
              epoch_length: int = 30) -> pd.DataFrame:
     """Evaluates the data in the data dictionary using the supplied list of metrics.
     Each entry in the data dictionary should have the following format:
@@ -82,88 +81,29 @@ def evaluate(data_dictionary: list, data_path: str,
         with Path(data_set['data_set_path']).joinpath(data_set['data_set_name']).open('rb') as fin:
             data = pickle.load(fin)
         for ID in data:
-            ID_dict = get_targets_and_predictions(ID = ID,
+            epoch_preds, epoch_targets = get_epoch_level_predictions_for_evaluation(ID = ID,
                                                   predictions = data[ID]['predictions'],
+                                                  targets = data[ID]['targets'],
                                                   data_path = data_path,
                                                   stage_file = stage_file,
                                                   apnea_threshold_for_epoch = apnea_threshold_for_epoch,
                                                   sampling_rate = sampling_rate,
-                                                  epoch_length = epoch_length)
-            
+                                                  epoch_length = epoch_length) 
             for metric in metrics:
                 metric_name = re.findall(r'function (.*) at', str(metric))[0]
-                #print(f'Running metric: {metric_name}')
-                results_dict_IDs[f'{metric_name}_signal'].append(metric(ID_dict['signal_level_targets'],
-                                                                        ID_dict['signal_level_predictions']))
-                results_dict_IDs[f'{metric_name}_epoch'].append(metric(ID_dict['epoch_level_predictions'],
-                                                                        ID_dict['epoch_level_targets']))
+                results_dict_IDs[f'{metric_name}_signal'].append(metric(data[ID]['targets'],
+                                                                        data[ID]['predictions']))
+                results_dict_IDs[f'{metric_name}_epoch'].append(metric(epoch_targets,
+                                                                        epoch_preds))
         # Now collapse into mean and std dev.
         for metric_name in metric_names:
-            results[metric_name].append(f'{np.mean(results_dict_IDs[metric_name])} ± {np.std(results_dict_IDs[metric_name])}')
+            mean = round(np.mean(results_dict_IDs[metric_name]),3)
+            std = round(np.std(results_dict_IDs[metric_name]),3)
+            results[metric_name].append(f'{mean} ± {std}')
         
     # Make into a dataframe and save as a .csv file
     results_df = pd.DataFrame.from_dict(results)
     results_df.to_csv(save_path.joinpath(save_name), index = False)
     
     return results_df
-                
-
-def get_targets_and_predictions(ID: str,
-                                predictions: np.ndarray,
-                                data_path: str,
-                                stage_file: str,
-                                apnea_threshold_for_epoch: float, 
-                                sampling_rate: int = 10, 
-                                epoch_length: int = 30,
-                                ) -> dict:
-    """Takes in ID and arrays of predictions and targets and returns
-    signal-level predictions and targets and epoch-level predictions and targets
-    NPUTS:
-        ID: sleeper ID.
-        predictions: array of full-length predictions
-        data_path: where stage file and apnea/hypopnea targets live
-        stage_file: name of staging file
-        save_path: where to save results
-        save_name: what to name saved results
-        apnea_threshold_for_epoch: the total length of apneic events required for a
-            sleep epoch to be called an apnea epoch
-        sampling_rate: sampling_rate at which labels were assigned, typically 10 Hz
-        epoch_length: epoch_length in seconds, typically 30 s
-    
-    RETURNS:
-        pandas dataframe showing results. Also saves results as a .csv file
-        using the save_path and save_name input arguments.
-    """
-    if not isinstance(data_path, Path):
-        data_path = Path(data_path)
-    
-    with data_path.joinpath(stage_file).open('rb') as fs:
-        stage_dict = pickle.load(fs)[ID]
-    
-    with data_path.joinpath('apnea_hypopnea_targets.p').open('rb') as ta:
-        targets = pickle.load(ta)[ID]
-    
-    signal_level_targets, signal_level_predictions = [], []
-    epoch_level_targets, epoch_level_predictions = [], []
-    
-    # Create signal-level and epoch-level representations
-    for epoch in stage_dict:
-        if stage_dict[epoch] in 'R','1','2','3']:
-                    signal_level_predictions.extend(predictions[(epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length])
-                    signal_level_targets.extend(targets[(epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length])
-                    
-                    if predictions[(epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length].sum() >= apnea_threshold_for_epoch:
-                        epoch_level_predictions.append(1)
-                    else:
-                        epoch_level_predictions.append(0)
-                    
-                    if targets[(epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length].sum() >= apnea_threshold_for_epoch:
-                        epoch_level_targets.append(1)
-                    else:
-                        epoch_level_targets.append(0)
-    return {'signal_level_predictions': np.array(signal_level_predictions),
-            'signal_level_targets': np.array(signal_level_targets),
-            'epoch_level_predictions': np.array(epoch_level_predictions),
-            'epoch_level_targets': np.array(epoch_level_targets)}
-        
     

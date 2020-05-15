@@ -16,7 +16,6 @@ from viterbi.viterbi import post_process
 def smooth_all_with_viterbi(path_to_probabilites: str,
                             save_path: str,
                             data_path: str,
-                            with_targets: bool = True,
                             probabilities_file_name: str = 'five_conv_two_dense_test_set_results.p',
                             save_name: str = 'five_conv_two_dense_test_viterbi_smoothed.p',
                             transition_matrix_name: str = 'apnea_hypopnea_transition_matrix',
@@ -33,7 +32,6 @@ def smooth_all_with_viterbi(path_to_probabilites: str,
         path_to_probabilites: where probabilities dict lives
         save_path: where to save output
         data_path: where .npy data files and metadata lives
-        with_targets: whether to include the targets in the output file.
         probabilities_file_name: name of probabilities dict
         save_name: name to give output file
         transition_matrix_name: name of transition matrix file, assumed to live in data_path
@@ -57,38 +55,25 @@ def smooth_all_with_viterbi(path_to_probabilites: str,
     viterbi_smoothed_preds = {}
     
     for ID in probabilities_dict:
-        print(f'ID: {ID}')
-        if with_targets:
-            full_predictions, targets = smooth_with_viterbi(probabilites = probabilities_dict[ID]['predictions'],
-                                                    ID = ID,
-                                                    data_path = data_path,
-                                                    return_targets = with_targets,
-                                                    transition_matrix_name = transition_matrix_name,
-                                                    stage_file = stage_file,
-                                                    REM_only = REM_only,
-                                                    sampling_rate = sampling_rate)
-            viterbi_smoothed_preds[ID] = {'predictions': full_predictions,
-                                          'targets': targets}
-        else:
-            full_predictions = smooth_with_viterbi(probabilites = probabilities_dict[ID]['predictions'],
-                                                    ID = ID,
-                                                    data_path = data_path,
-                                                    return_targets = with_targets,
-                                                    transition_matrix_name = transition_matrix_name,
-                                                    stage_file = stage_file,
-                                                    REM_only = REM_only,
-                                                    sampling_rate = sampling_rate)
-            viterbi_smoothed_preds[ID] = {'predictions': full_predictions}
+        #print(f'ID: {ID}')
+        predictions = smooth_with_viterbi(probabilites = probabilities_dict[ID]['predictions'],
+                                          ID = ID,
+                                          data_path = data_path,
+                                          transition_matrix_name = transition_matrix_name,
+                                          stage_file = stage_file,
+                                          REM_only = REM_only,
+                                          sampling_rate = sampling_rate)
+        viterbi_smoothed_preds[ID] = {'predictions': predictions[:len(probabilities_dict[ID]['targets'])],
+                                      'targets': np.array(probabilities_dict[ID]['targets'])}
         
-        with save_path.joinpath(save_name).open('wb') as fout:
-            pickle.dump(viterbi_smoothed_preds, fout)
+    with save_path.joinpath(save_name).open('wb') as fout:
+      pickle.dump(viterbi_smoothed_preds, fout)
             
         
 
 def smooth_with_viterbi(probabilites: np.ndarray,
                         ID: str,
                         data_path: str,
-                        return_targets: bool = True,
                         transition_matrix_name: str = 'apnea_hypopnea_transition_matrix',
                         stage_file: str = 'stage_dict.p',
                         REM_only = False,
@@ -132,9 +117,8 @@ def smooth_with_viterbi(probabilites: np.ndarray,
             if stage_dict[epoch] not in ['R','1','2','3']:
                 filtered_target[(epoch-1)*sampling_rate*30:epoch*sampling_rate*30] = -1
     
-    # Set up arrays to store full probabilities and predictions
+    # Set up indicator array
     full_probabilities = np.zeros((len(targets),probabilites.shape[-1]))
-    full_predictions = np.zeros(len(targets))
     
     # Convert to full length
     counter = 0
@@ -144,16 +128,17 @@ def smooth_with_viterbi(probabilites: np.ndarray,
             counter += 1
             if counter >= len(probabilites): break
     
-    if smooth_with_viterbi:
-        # Get subsequence indices
-        idx = np.nonzero(filtered_target != -1)[0]
-        groups = [list(group) for group in more_itertools.consecutive_groups(idx)]
-        
-        # Get Viterbi smoothed predictions for each subsequence
-        for group in groups:
-            full_predictions[group] = post_process(full_probabilities[group,:], transition_mat)
+    # Get subsequence indices
+    idx = np.nonzero(filtered_target != -1)[0]
+    groups = [list(group) for group in more_itertools.consecutive_groups(idx)]
+
+       
+    # Get Viterbi smoothed predictions for each subsequence
+    sleep_predictions = []
+    for i,group in enumerate(groups):
+        #print(f'\tProcessing subsequence {i} of length {len(group)}')
+        preds = post_process(full_probabilities[group,:], transition_mat)
+        sleep_predictions.extend(preds)
+
     
-    if return_targets:
-        return full_predictions, targets
-    else:
-        return full_predictions
+    return np.array(sleep_predictions)
