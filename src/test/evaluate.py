@@ -142,17 +142,15 @@ def get_targets_and_predictions(ID: str,
     
     with data_path.joinpath('apnea_hypopnea_targets.p').open('rb') as ta:
         targets = pickle.load(ta)[ID]
-        
-    stages = ['R','1','2','3']
     
     signal_level_targets, signal_level_predictions = [], []
     epoch_level_targets, epoch_level_predictions = [], []
     
     # Create signal-level and epoch-level representations
     for epoch in stage_dict:
-        if stage_dict[epoch] in stages:
-                    signal_level_predictions.append(predictions[(epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length])
-                    signal_level_targets.append(targets[(epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length])
+        if stage_dict[epoch] in 'R','1','2','3']:
+                    signal_level_predictions.extend(predictions[(epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length])
+                    signal_level_targets.extend(targets[(epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length])
                     
                     if predictions[(epoch-1)*sampling_rate*epoch_length:epoch*sampling_rate*epoch_length].sum() >= apnea_threshold_for_epoch:
                         epoch_level_predictions.append(1)
@@ -163,8 +161,8 @@ def get_targets_and_predictions(ID: str,
                         epoch_level_targets.append(1)
                     else:
                         epoch_level_targets.append(0)
-    return {'signal_level_predictions': np.array(signal_level_predictions).ravel(),
-            'signal_level_targets': np.array(signal_level_targets).ravel(),
+    return {'signal_level_predictions': np.array(signal_level_predictions),
+            'signal_level_targets': np.array(signal_level_targets),
             'epoch_level_predictions': np.array(epoch_level_predictions),
             'epoch_level_targets': np.array(epoch_level_targets)}
         

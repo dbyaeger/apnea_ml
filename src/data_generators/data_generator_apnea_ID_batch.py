@@ -88,7 +88,7 @@ class DataGeneratorApneaIDBatch(Sequence):
             for ID in self.stage_dict:
                 for epoch in self.stage_dict[ID]:
                     if not REM_only:
-                        if self.stage_dict[ID][epoch] in [None, 'W']:
+                        if self.stage_dict[ID][epoch] not in ['R','1','2','3']:
                             self.targets[ID][(epoch-1)*sampling_rate*30:epoch*sampling_rate*30] = -1
                     elif REM_only:
                         if self.stage_dict[ID][epoch] != 'R':

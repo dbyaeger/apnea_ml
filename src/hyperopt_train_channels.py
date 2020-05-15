@@ -180,7 +180,7 @@ class HyperOptimizer():
 
         reduce_lr = ReduceLROnPlateau(factor=0.1,
                                         patience=8,
-                                        min_lr=1e-7)
+                                        min_lr=1e-6)
         
         model_checkpoint = ModelCheckpoint(filepath=model_path, 
                                              monitor='loss', 
