@@ -14,9 +14,9 @@ from sklearn.metrics import (balanced_accuracy_score, accuracy_score, f1_score,
 import re
 
 def evaluate(data_dictionary: list, data_path: str,
-             stage_file: str, save_path: str, save_name: str,
-             metrics: list = [balanced_accuracy_score, accuracy_score, f1_score,
-                             cohen_kappa_score],
+              save_path: str, save_name: str,
+             metrics: list = [balanced_accuracy_score, accuracy_score,
+                             cohen_kappa_score], stage_file: str = 'stage_dict.p',
              apnea_threshold_for_epoch: float = 0.1, sampling_rate: int = 10, 
              epoch_length: int = 30) -> pd.DataFrame:
     """Evaluates the data in the data dictionary using the supplied list of metrics.
@@ -62,7 +62,7 @@ def evaluate(data_dictionary: list, data_path: str,
     # Make list of metric names
     metric_names = []
     for metric in metrics:
-        metric_name = re.fndall(re.findall(r'function (.*) at', str(metric))[0])
+        metric_name = re.findall(r'function (.*) at', str(metric))[0]
         for evaluation_type in ['signal','epoch']:
             metric_names.append(f'{metric_name}_{evaluation_type}')
             
@@ -74,7 +74,7 @@ def evaluate(data_dictionary: list, data_path: str,
     # Get predictions and targets
     for data_set in data_dictionary:
         results['data'].append(data_set['data_set_identifer'])
-        
+        #print(f'data_set: {data_set}')
         # Make dictionary to hold results for each ID
         results_dict_IDs = {metric_name: [] for metric_name in metric_names}
         
@@ -91,14 +91,15 @@ def evaluate(data_dictionary: list, data_path: str,
                                                   epoch_length = epoch_length)
             
             for metric in metrics:
-                metric_name = re.fndall(re.findall(r'function (.*) at', str(metric))[0])
+                metric_name = re.findall(r'function (.*) at', str(metric))[0]
+                #print(f'Running metric: {metric_name}')
                 results_dict_IDs[f'{metric_name}_signal'].append(metric(ID_dict['signal_level_targets'],
                                                                         ID_dict['signal_level_predictions']))
                 results_dict_IDs[f'{metric_name}_epoch'].append(metric(ID_dict['epoch_level_predictions'],
                                                                         ID_dict['epoch_level_targets']))
         # Now collapse into mean and std dev.
         for metric_name in metric_names:
-            results.append(f'{np.mean(results_dict_IDs[metric_name])} ± {np.std(results_dict_IDs[metric_name])}')
+            results[metric_name].append(f'{np.mean(results_dict_IDs[metric_name])} ± {np.std(results_dict_IDs[metric_name])}')
         
     # Make into a dataframe and save as a .csv file
     results_df = pd.DataFrame.from_dict(results)
@@ -113,7 +114,8 @@ def get_targets_and_predictions(ID: str,
                                 stage_file: str,
                                 apnea_threshold_for_epoch: float, 
                                 sampling_rate: int = 10, 
-                                epoch_length: int = 30) -> dict:
+                                epoch_length: int = 30,
+                                ) -> dict:
     """Takes in ID and arrays of predictions and targets and returns
     signal-level predictions and targets and epoch-level predictions and targets
     NPUTS:
@@ -135,16 +137,13 @@ def get_targets_and_predictions(ID: str,
     if not isinstance(data_path, Path):
         data_path = Path(data_path)
     
-    with data_path.joinpath(stage_file) as fs:
+    with data_path.joinpath(stage_file).open('rb') as fs:
         stage_dict = pickle.load(fs)[ID]
     
     with data_path.joinpath('apnea_hypopnea_targets.p').open('rb') as ta:
         targets = pickle.load(ta)[ID]
         
-    if REM_only:
-        stages = ['R']
-    else:
-        stages = ['R','1','2','3']
+    stages = ['R','1','2','3']
     
     signal_level_targets, signal_level_predictions = [], []
     epoch_level_targets, epoch_level_predictions = [], []
@@ -164,9 +163,8 @@ def get_targets_and_predictions(ID: str,
                         epoch_level_targets.append(1)
                     else:
                         epoch_level_targets.append(0)
-    
-    return {'signal_level_predictions': np.array(signal_level_predictions),
-            'signal_level_targets': np.array(signal_level_targets),
+    return {'signal_level_predictions': np.array(signal_level_predictions).ravel(),
+            'signal_level_targets': np.array(signal_level_targets).ravel(),
             'epoch_level_predictions': np.array(epoch_level_predictions),
             'epoch_level_targets': np.array(epoch_level_targets)}
         
