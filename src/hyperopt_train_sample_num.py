@@ -15,7 +15,7 @@ from model_functions.model_functions import build_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.models import load_model
 from sklearn.metrics import balanced_accuracy_score
-from data_generators.data_generator_apnea import DataGeneratorApnea
+from data_generators.data_generator_apnea import DataGeneratorApnea, DataGeneratorApneaRandomSubset
 from hyperopt.hp import uniform, loguniform, quniform, lognormal, choice
 from hyperopt import STATUS_OK
 from hyperopt import Trials, tpe, fmin
@@ -150,7 +150,7 @@ class HyperOptimizer():
                                     desired_number_of_samples = desired_number_of_samples,
                                     load_all_data = True)
         
-        cv_generator =  DataGeneratorApnea(
+        cv_generator =  DataGeneratorApneaRandomSubset(
                                     n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
