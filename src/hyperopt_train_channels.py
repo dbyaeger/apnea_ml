@@ -172,7 +172,8 @@ class HyperOptimizer():
         print(f'Training data length: {len(train_generator)}')
         print(f'Select channel list: {train_generator.select_channels}')
         print(f'Channel index: {train_generator.channel_idx}')
-        print('Sample data: {train_generator.__getitem__(0)[0]}')
+        print(f'Sample train data: {train_generator.__getitem__(0)[0]}')
+        print(f'Sample val data: {cv_generator.__getitem__(0)[0]}')
         
         
         # Set parameters
