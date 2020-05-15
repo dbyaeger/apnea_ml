@@ -279,7 +279,7 @@ class DataGeneratorApneaIDBatch(Sequence):
         
         x = np.zeros(self.dim)
         
-        sig = self.data[start_idx:end_idx,:self.n_channels]
+        sig = self.data[start_idx:end_idx,self.channel_idx]
 
         if left_pad is None and right_pad is None:
             x = sig
