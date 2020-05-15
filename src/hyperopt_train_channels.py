@@ -182,7 +182,7 @@ class HyperOptimizer():
         model_path = str(self.model_path.joinpath(f'{self.save_name}_{self.iteration}.hdf5'))                            
         n_epoch = 30
         stopping = EarlyStopping(patience=5)
-        learning_rate = 1e-3
+        learning_rate = 1e-4
 
         reduce_lr = ReduceLROnPlateau(factor=0.1,
                                         patience=8,
