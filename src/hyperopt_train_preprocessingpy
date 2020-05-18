@@ -110,15 +110,12 @@ class HyperOptimizer():
         stored results if available
         """
         i = 1
-        print('Running')
         while i < (self.max_evals + 1):
             if self.trial_path.is_file():
                 print('Retrieving trials object')
                 with self.trial_path.open('rb') as fh:
                     self.bayes_trials = pickle.load(fh)
-                print('Opening trials object')
                 i = len(self.bayes_trials) + 1
-                print('Running optimizer')
                 self.optimize_helper(i)
             else:
                 print('No trials object found')
