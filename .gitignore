@@ -13,3 +13,4 @@ models
 predictions
 ./models
 ./predictions
+./results

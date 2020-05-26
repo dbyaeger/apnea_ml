@@ -31,7 +31,7 @@ def run():
     #sys.path.append('/Users/danielyaeger/Documents/Modules/apnea-ml')
 
 
-class DataProcessorApnea:
+class DataProcessorRSWA:
 
     def __init__(self, input_path = '/Volumes/TOSHIBA EXT/training_data',
                  output_path = '/Users/danielyaeger/Documents/raw_no_baseline_all',
@@ -181,7 +181,7 @@ class DataProcessorApnea:
         end_time = signal_dict[self.channel_list[0]].shape[0]
         print(f"\tSpO2 sampling rate = {signal_dict['SpO2'].shape[-1]}")
         
-        # split study, restrict to 30 minutes before cpap machine turned on
+        # split study, restrict to 60 minutes before cpap machine turned on
         if ID in self.split_studies:
             field_cpap_start = get_cpap_start_epoch(xdf)
             notes = get_notes(str(self.path.joinpath(ID + '.xdf')),xdf)
@@ -500,15 +500,7 @@ if __name__ == "__main__":
     #print('here!')
     sys.path.append('/Users/danielyaeger/Documents/Modules')
     sys.path.append('/Users/danielyaeger/Documents/Modules/sleep-research-ml/src')
-    ID_list = ['XAXVDJYND80Q4Q0',
-               'XAXVDJYND82F3BO',
-               'XAXVDJYND83LQ1F',
-               'XAXVDJYND82Q807',
-               'XAXVDJYND7ZN951',
-               'XAXVDJYND7WLVFB',
-               'XAXVDJYND7Q6JTK',
-               'XAXVDJYND7ZUIM2']
     #print(sys.path)
-    dg = DataProcessorApneaMP()
+    dg = DataProcessorRSWA()
     dg.process_data()
     #create_data_partition(file_path = '/Volumes/Elements/selected_p_files_npy')

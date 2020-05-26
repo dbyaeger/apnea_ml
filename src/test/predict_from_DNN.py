@@ -72,15 +72,15 @@ def predict(path_to_model: str, path_to_results: str,
         test_results_dict[ID]['predictions'] = y_pred
         
         try:
-            test_results_dict[ID]['balanaced_accuracy'] = balanced_accuracy_score(y,
+            test_results_dict[ID]['balanced_accuracy_score'] = balanced_accuracy_score(y,
                                                       y_pred.argmax(-1))
         except:
-             test_results_dict[ID]['balanaced_accuracy'] = np.nan
+             test_results_dict[ID]['balanced_accuracy_score'] = np.nan
         
         test_results_dict[ID]["confusion_matrix"] = confusion_matrix(y,y_pred.argmax(-1))
         
         if verbose:
-            print(f"Balanced accuracy: {test_results_dict[ID]['balanaced_accuracy']}")
+            print(f"Balanced accuracy: {test_results_dict[ID]['balanced_accuracy_score']}")
     
     with path_to_results.joinpath(f'{model_name}_test_set_results.p').open('wb') as fh:
         pickle.dump(test_results_dict, fh)
