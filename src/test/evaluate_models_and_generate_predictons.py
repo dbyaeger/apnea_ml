@@ -10,12 +10,11 @@ from test.evaluate import evaluate
 from test.predict_from_DNN import predict
 from test.maxlikelihood import maxlikelihood
 from viterbi.viterbi_wrapper import smooth_all_with_viterbi
-from get_epoch_level_predictions import make_apnea_dict, make_ground_truth_apnea_dict
+from test.get_epoch_level_predictions import make_apnea_dict, make_ground_truth_apnea_dict
 
 def evaluate_models_and_generate_predictions(
         prediction_configurations: list,
         path_to_ground_truth_staging: str,
-        ground_truth_staging_name: str,
         data_path_for_ground_truth: str,
         save_path: str,
         save_evaluation_name: str,
