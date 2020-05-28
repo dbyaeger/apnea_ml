@@ -8,10 +8,11 @@ Created on Fri May 15 13:38:11 2020
 import numpy as np
 from pathlib import Path
 import pickle
-#from data_generators.data_generator_apnea import DataGeneratorApnea
+from data_generators.data_generator_apnea import DataGeneratorApnea
 
-def make_ground_truth_apnea_dict(path_to_data: str,
-                    save_path: str, apnea_threshold_for_epoch: int = 10,
+def make_ground_truth_apnea_dict(path_to_data: str, ground_truth_staging_name: str,
+                    save_path: str,
+                    apnea_threshold_for_epoch: int = 10,
                     sampling_rate: int = 10, epoch_length: int = 30):
     """Creates ground truth apnea labels at epoch level and stores these in
     a dictionary keyed by ID. The path_to_data MUST BE FOR apnea data
@@ -29,7 +30,7 @@ def make_ground_truth_apnea_dict(path_to_data: str,
     if not isinstance(path_to_data, Path):
         path_to_data = Path(path_to_data)
     
-    with path_to_data.joinpath('stage_dict.p').open('rb') as fh:
+    with path_to_data.joinpath(ground_truth_staging_name).open('rb') as fh:
         stage_dict = pickle.load(fh)
     
     if not isinstance(save_path, Path):
@@ -115,28 +116,22 @@ def make_apnea_dict(signal_level_predictions_name: str, predictions_path: str,
     with predictions_path.joinpath(signal_level_predictions_name).open('rb') as fin:
         predictions = pickle.load(fin)
     
-    stage_dict = {'targets': {}, 'predictions': {}}
+    stage_dict = {}
     
     for ID in predictions:
-        epoch_level_predictions, epoch_level_targets = \
-            get_epoch_level_predictions_for_evaluation(ID = ID,
+        stage_dict[ID] = get_epoch_level_predictions(ID = ID,
                                 predictions = predictions[ID]['predictions'],
-                                targets = predictions[ID]['targets'],
                                 data_path = stage_path,
                                 stage_file = stage_file_name,
                                 apnea_threshold_for_epoch = apnea_threshold_for_epoch, 
                                 sampling_rate = sampling_rate, 
                                 epoch_length = epoch_length) 
-        stage_dict['predictions'][ID] = epoch_level_predictions
-        stage_dict['targets'][ID] = epoch_level_targets
         
-    
     with save_path.joinpath(save_name).open('wb') as fout:
         pickle.dump(stage_dict,fout)
 
-def get_epoch_level_predictions_for_evaluation(ID: str,
+def get_epoch_level_predictions(ID: str,
                                 predictions: np.ndarray,
-                                targets: np.ndarray,
                                 data_path: str,
                                 stage_file: str,
                                 apnea_threshold_for_epoch: float, 
@@ -148,7 +143,7 @@ def get_epoch_level_predictions_for_evaluation(ID: str,
         ID: sleeper ID.
         predictions: 1-D array of predictions (only for sleep epochs)
         targets: 1-D array of targets (only for sleep epochs)
-        data_path: where stage file and apnea/hypopnea targets live
+        data_path: where stage file lives
         stage_file: name of staging file
         apnea_threshold_for_epoch: the total length of apneic events required for a
             sleep epoch to be called an apnea epoch
@@ -165,27 +160,19 @@ def get_epoch_level_predictions_for_evaluation(ID: str,
         stage_dict = pickle.load(fs)[ID]
     
     if isinstance(predictions, list): predictions = np.array(predictions)
-    if isinstance(targets, list): targets = np.array(targets)
 
     # Adjust apnea_threshold_for_epoch to be in units of samples
     apnea_threshold_for_epoch *= sampling_rate
 
-    epoch_level_targets, epoch_level_predictions = [], []
+    epoch_level_predictions = {epoch: 'None' for epoch in stage_dict}
     counter = 0
+    
     # Create signal-level and epoch-level representations
     for epoch in sorted(list(stage_dict.keys())):
         if stage_dict[epoch] in ['R','1','2','3']:
-                    
-                    if predictions[counter:counter + sampling_rate*epoch_length].sum() >= apnea_threshold_for_epoch:
-                        epoch_level_predictions.append(1)
-                    else:
-                        epoch_level_predictions.append(0)
-                    
-                    if targets[counter:counter + sampling_rate*epoch_length].sum() >= apnea_threshold_for_epoch:
-                        epoch_level_targets.append(1)
-                    else:
-                        epoch_level_targets.append(0)
-                    counter += sampling_rate*epoch_length
-                    if counter >= len(predictions):break
+            if predictions[counter:counter + sampling_rate*epoch_length].sum() >= apnea_threshold_for_epoch:
+                epoch_level_predictions[epoch] = 'A/H'
+                counter += sampling_rate*epoch_length
+                if counter >= len(predictions): break
 
-    return np.array(epoch_level_predictions), np.array(epoch_level_targets)
+    return np.array(epoch_level_predictions)

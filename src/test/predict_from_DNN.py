@@ -14,15 +14,20 @@ from data_generators.data_generator_apnea import DataGeneratorApnea
 
 def predict(path_to_model: str, path_to_results: str, 
             path_to_data: str, model_name: str = 'five_conv_two_dense',
+            save_name: str, save_path: str,
             verbose: bool = True):
     """Loads the trials object and finds the model with the lowest loss. Loads
     the corresponding trained model and evaluates it over every model in the 
     test set, saving a dictionary of dictionaries keyed by ID with predictions, 
-    true labels, confusion matrix, and balanced accuracy."""
+    true labels, confusion matrix, and balanced accuracy with name save_name
+    in save_path."""
     
     
     if not isinstance(path_to_results, Path):
         path_to_results = Path(path_to_results)
+        
+    if not isinstance(save_path, Path):
+        save_path = Path(save_path)
     
     with path_to_results.joinpath(model_name + '_trials').open('rb') as fh:
         results = pickle.load(fh)
@@ -56,7 +61,7 @@ def predict(path_to_model: str, path_to_results: str,
         test_gen = DataGeneratorApnea(n_classes = 2,
                                  data_path = path_to_data,
                                  single_ID = ID,
-                                 batch_size = 16,
+                                 batch_size = 2,
                                  mode="test",
                                  context_samples=300,
                                  shuffle = False,
@@ -82,7 +87,7 @@ def predict(path_to_model: str, path_to_results: str,
         if verbose:
             print(f"Balanced accuracy: {test_results_dict[ID]['balanced_accuracy_score']}")
     
-    with path_to_results.joinpath(f'{model_name}_test_set_results.p').open('wb') as fh:
+    with save_path.joinpath(save_name).open('wb') as fh:
         pickle.dump(test_results_dict, fh)
 
         

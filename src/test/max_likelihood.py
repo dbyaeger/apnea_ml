@@ -10,9 +10,9 @@ from pathlib import Path
 import pickle
 
 def maxlikelihood(path_to_probabilities: str,
+                  probablities_file_name: str,
                   save_path: str,
-                  probablities_file_name: str = 'five_conv_two_dense_test_set_results.p',
-                  save_name: str = 'five_conv_two_dense_test_max_likelihood.p',):
+                  save_name: str):
     
     if not isinstance(path_to_probabilities, Path): path_to_probabilities = Path(path_to_probabilities)
     

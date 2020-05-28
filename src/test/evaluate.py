@@ -9,13 +9,16 @@ import pickle
 from pathlib import Path
 import pandas as pd
 import numpy as np
-from sklearn.metrics import (balanced_accuracy_score, accuracy_score, f1_score,
-                             cohen_kappa_score)
+from sklearn.metrics import (balanced_accuracy_score, accuracy_score)
 import re
+from get_epoch_length_predictions import get_epoch_level_predictions
 
-def evaluate(data_dictionary: list, data_path: str,
-              save_path: str, save_name: str,
-             metrics: list = [balanced_accuracy_score, accuracy_score], stage_file: str = 'stage_dict.p',
+def evaluate(data_dictionary: list, save_path: str, save_name: str,
+             name_of_ground_truth_staging: str,
+             path_to_ground_truth_staging: str,
+             name_of_ground_truth_apneas: str,
+             path_to_ground_truth_apneas: str,
+             metrics: list = [balanced_accuracy_score, accuracy_score],
              apnea_threshold_for_epoch: float = 10, sampling_rate: int = 10, 
              epoch_length: int = 30) -> pd.DataFrame:
     """Evaluates the data in the data dictionary using the supplied list of metrics.
@@ -23,7 +26,8 @@ def evaluate(data_dictionary: list, data_path: str,
         
         data_dictionary = [{'data_set_name': <string>,
                             'data_set_path': <string>,
-                            'data_set_identifer': <string>}]
+                            'data_set_identifer': <string>,
+                            'data_set_metadata_path': <string>,}]
     
     where data_set_name is the name of the data set file in the data_set_path,
     and data_set_identifier is the name that should be given to the dataset
@@ -37,6 +41,9 @@ def evaluate(data_dictionary: list, data_path: str,
     An epoch will be considered to be an apnea epoch if the total length of the
     apneic events exceeds the apnea_threshold_for_epoch (which is in units of 
     seconds).
+    
+    NOTE: signal-level accuracies ONLY make sense when ground-truth staging
+    is used.
     
     INPUTS:
         data_dictionary: see above for descrption.
@@ -57,6 +64,9 @@ def evaluate(data_dictionary: list, data_path: str,
     
     if not isinstance(save_path, Path):
         save_path = Path(save_path)
+    
+    if not isinstance(path_to_ground_truth_apneas, Path):
+        path_to_ground_truth_apneas = Path(path_to_ground_truth_apneas)
         
     # Make list of metric names
     metric_names = []
@@ -70,6 +80,10 @@ def evaluate(data_dictionary: list, data_path: str,
     results = {metric_name: [] for metric_name in metric_names}
     results['data'] = []
     
+    # Get ground truth apneas
+    with path_to_ground_truth_apneas.joinpath(name_of_ground_truth_apneas).open('rb') as gt:
+        true_apnea_dict = pickle.load(gt)
+    
     # Get predictions and targets
     for data_set in data_dictionary:
         results['data'].append(data_set['data_set_identifer'])
@@ -81,20 +95,26 @@ def evaluate(data_dictionary: list, data_path: str,
         with Path(data_set['data_set_path']).joinpath(data_set['data_set_name']).open('rb') as fin:
             data = pickle.load(fin)
         for ID in data:
-            epoch_preds, epoch_targets = get_epoch_level_predictions_for_evaluation(ID = ID,
+            epoch_preds_dict = get_epoch_level_predictions(ID = ID,
                                                   predictions = data[ID]['predictions'],
-                                                  targets = data[ID]['targets'],
-                                                  data_path = data_path,
-                                                  stage_file = stage_file,
+                                                  data_path = data_set['data_set_metadata_path'],
+                                                  stage_file = 'stage_dict.p',
                                                   apnea_threshold_for_epoch = apnea_threshold_for_epoch,
                                                   sampling_rate = sampling_rate,
                                                   epoch_length = epoch_length) 
+            
+            # Convert epoch_level predictions and targets into lists
+            epoch_preds_list = [epoch_preds_dict[epoch] for epoch in sorted(list(epoch_preds_dict.keys()))]
+            epoch_targets_list = [true_apnea_dict[epoch] for epoch in sorted(list(true_apnea_dict.keys()))]
+            assert len(epoch_preds_list) == len(epoch_targets_list), \
+            f'epoch_preds_list length ({len(epoch_preds_list)}) != epoch_targets_list length ({len(epoch_targets_list)})!'
+            
             for metric in metrics:
                 metric_name = re.findall(r'function (.*) at', str(metric))[0]
                 results_dict_IDs[f'{metric_name}_signal'].append(metric(data[ID]['targets'],
                                                                         data[ID]['predictions']))
-                results_dict_IDs[f'{metric_name}_epoch'].append(metric(epoch_targets,
-                                                                        epoch_preds))
+                results_dict_IDs[f'{metric_name}_epoch'].append(metric(epoch_targets_list,
+                                                                        epoch_preds_list))
         # Now collapse into mean and std dev.
         for metric_name in metric_names:
             mean = round(np.mean(results_dict_IDs[metric_name]),3)
