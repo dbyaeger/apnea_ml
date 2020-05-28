@@ -10,8 +10,9 @@ from pathlib import Path
 import pickle
 from data_generators.data_generator_apnea import DataGeneratorApnea
 
-def make_ground_truth_apnea_dict(path_to_data: str, ground_truth_staging_name: str,
+def make_ground_truth_apnea_dict(path_to_data: str, 
                     save_path: str,
+                    ground_truth_staging_name: str = 'ground_truth_staging_name',
                     apnea_threshold_for_epoch: int = 10,
                     sampling_rate: int = 10, epoch_length: int = 30):
     """Creates ground truth apnea labels at epoch level and stores these in
@@ -72,7 +73,7 @@ def make_ground_truth_apnea_dict(path_to_data: str, ground_truth_staging_name: s
                 counter += increment
                 if counter >= len(signal_level_labels[ID]): break
     
-    with save_path.joinpath('ground_truth_apnea_dict.p').open('wb') as fout:
+    with save_path.joinpath(ground_truth_staging_name).open('wb') as fout:
         pickle.dump(epoch_level_labels, fout)
 
 def make_apnea_dict(signal_level_predictions_name: str, predictions_path: str,

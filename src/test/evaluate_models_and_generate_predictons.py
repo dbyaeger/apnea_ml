@@ -10,7 +10,7 @@ from test.evaluate import evaluate
 from test.predict_from_DNN import predict
 from test.maxlikelihood import maxlikelihood
 from viterbi.viterbi_wrapper import smooth_all_with_viterbi
-from get_epoch_level_predictions import make_apnea_dict
+from get_epoch_level_predictions import make_apnea_dict, make_ground_truth_apnea_dict
 
 def evaluate_models_and_generate_predictions(
         prediction_configurations: list,
@@ -34,7 +34,7 @@ def evaluate_models_and_generate_predictions(
         'prediction_method_for_pipeline must be max_likelihood or viterbi!'
     
     # Create full-length ground-truth apnea labels for pipeline if they don't exist
-    if not save_path_for_full_length_predictions.joinpath('ground_truth_apnea_dict.p').exists():
+    if not save_path.joinpath('ground_truth_apnea_dict.p').exists():
         make_ground_truth_apnea_dict(path_to_data = data_path_for_ground_truth,
                                      path_to_ground_truth_staging = path_to_ground_truth_staging,
                                      ground_truth_staging_name = ground_truth_staging_name,
@@ -50,7 +50,7 @@ def evaluate_models_and_generate_predictions(
             predict(path_to_model = prediction['path_to_model'],
                     path_to_results = prediction['path_to_results'],
                     path_to_data = prediction['path_to_data'],
-                    model_name = prediction['five_conv_two_dense'],
+                    model_name = prediction['model_name'],
                     save_path = prediction['save_path'],
                     save_name = prediction['save_name_signal_level'],
                     verbose = True)
@@ -92,7 +92,8 @@ def evaluate_models_and_generate_predictions(
                             predictions_path = prediction['save_path'],
                             stage_file_name = 'stage_dict.p',
                             stage_path = prediction['path_to_data'],
-                            save_name = prediction['save_name_epoch_level'])
+                            save_name = prediction['save_name_epoch_level'],
+                            save_path = save_path)
 
     # Evaluate
     evaluate(data_dictionary = data_dictionary,
