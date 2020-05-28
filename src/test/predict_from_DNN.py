@@ -13,7 +13,7 @@ from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 from data_generators.data_generator_apnea import DataGeneratorApnea
 
 def predict(path_to_model: str, path_to_results: str, 
-            path_to_data: str, model_name: str = 'five_conv_two_dense',
+            path_to_data: str, model_name: str,
             save_name: str, save_path: str,
             verbose: bool = True):
     """Loads the trials object and finds the model with the lowest loss. Loads
