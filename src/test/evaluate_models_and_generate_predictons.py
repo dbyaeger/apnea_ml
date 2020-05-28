@@ -98,7 +98,7 @@ def evaluate_models_and_generate_predictions(
     evaluate(data_dictionary = data_dictionary,
              save_path = save_path,
              save_name = save_evaluation_name,
-             name_of_ground_truth_staging = ground_truth_staging_name,
+             name_of_ground_truth_staging = 'ground_truth_stage_dict.p',
              path_to_ground_truth_staging = path_to_ground_truth_staging,
              name_of_ground_truth_apneas = 'ground_truth_apnea_dict.p',
              path_to_ground_truth_apneas = save_path)

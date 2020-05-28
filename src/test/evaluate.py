@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import (balanced_accuracy_score, accuracy_score)
 import re
-from get_epoch_length_predictions import get_epoch_level_predictions
+from test.get_epoch_length_predictions import get_epoch_level_predictions
 
 def evaluate(data_dictionary: list, save_path: str, save_name: str,
              name_of_ground_truth_staging: str,
