@@ -12,7 +12,8 @@ from data_generators.data_generator_apnea import DataGeneratorApnea
 
 def make_ground_truth_apnea_dict(path_to_data: str, 
                     save_path: str,
-                    ground_truth_staging_name: str = 'ground_truth_staging_name',
+                    path_to_ground_truth_staging: str,
+                    ground_truth_staging_name: str = 'ground_truth_stage_dict.p',
                     apnea_threshold_for_epoch: int = 10,
                     sampling_rate: int = 10, epoch_length: int = 30):
     """Creates ground truth apnea labels at epoch level and stores these in
@@ -31,7 +32,10 @@ def make_ground_truth_apnea_dict(path_to_data: str,
     if not isinstance(path_to_data, Path):
         path_to_data = Path(path_to_data)
     
-    with path_to_data.joinpath(ground_truth_staging_name).open('rb') as fh:
+    if not isinstance(path_to_ground_truth_staging, Path):
+        path_to_ground_truth_staging = Path(path_to_ground_truth_staging)
+    
+    with path_to_ground_truth_staging.joinpath(ground_truth_staging_name).open('rb') as fh:
         stage_dict = pickle.load(fh)
     
     if not isinstance(save_path, Path):
@@ -176,4 +180,4 @@ def get_epoch_level_predictions(ID: str,
                 counter += sampling_rate*epoch_length
                 if counter >= len(predictions): break
 
-    return np.array(epoch_level_predictions)
+    return epoch_level_predictions

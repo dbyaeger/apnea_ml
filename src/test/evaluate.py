@@ -105,9 +105,9 @@ def evaluate(data_dictionary: list, save_path: str, save_name: str,
             
             # Convert epoch_level predictions and targets into lists
             epoch_preds_list = [epoch_preds_dict[epoch] for epoch in sorted(list(epoch_preds_dict.keys()))]
-            epoch_targets_list = [true_apnea_dict[epoch] for epoch in sorted(list(true_apnea_dict.keys()))]
+            epoch_targets_list = [true_apnea_dict[ID][epoch] for epoch in sorted(list(true_apnea_dict[ID].keys()))]
             assert len(epoch_preds_list) == len(epoch_targets_list), \
-            f'epoch_preds_list length ({len(epoch_preds_list)}) != epoch_targets_list length ({len(epoch_targets_list)})!'
+            f'for {ID}, epoch_preds_list length ({len(epoch_preds_list)}) != epoch_targets_list length ({len(epoch_targets_list)})!'
             
             for metric in metrics:
                 metric_name = re.findall(r'function (.*) at', str(metric))[0]
