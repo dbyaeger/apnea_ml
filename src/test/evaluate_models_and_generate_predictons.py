@@ -35,8 +35,8 @@ def evaluate_models_and_generate_predictions(
         'prediction_method_for_pipeline must be max_likelihood or viterbi!'
     
     # Create full-length ground-truth apnea labels for pipeline if they don't exist
-   # if not save_path.joinpath('ground_truth_apnea_dict.p').exists():
-   make_ground_truth_apnea_dict(path_to_data = data_path_for_ground_truth,
+    if not save_path.joinpath('ground_truth_apnea_dict.p').exists():
+        make_ground_truth_apnea_dict(path_to_data = data_path_for_ground_truth,
                                      path_to_ground_truth_staging = path_to_ground_truth_staging,
                                      ground_truth_staging_name ='ground_truth_stage_dict.p',
                                      save_path = save_path_apnea_dicts,
@@ -47,7 +47,7 @@ def evaluate_models_and_generate_predictions(
     data_dictionary = []
     
     for prediction in prediction_configurations:
-        if not save_path_apnea_dicts.joinpath(prediction['save_name_signal_level']).exists():
+        if not prediction['save_path'].joinpath(prediction['save_name_signal_level']).exists():
             
             predict(path_to_model = prediction['path_to_model'],
                     path_to_results = prediction['path_to_results'],
@@ -146,4 +146,37 @@ if __name__ == "__main__":
         save_evaluation_name = save_evaluation_name,
         apnea_threshold_for_epoch = apnea_threshold_for_epoch)
     
-    
+apnea_threshold_for_epoch = 1
+path = Path('/content/gdrive/My Drive/')
+path_to_model = path.joinpath('Models')
+path_to_results = path.joinpath('Results')
+path_to_data = path.joinpath('Data')
+pred_save_path = path.joinpath('Apnea_Predictions')
+prediction_configurations = [{'path_to_model': path_to_model, 'path_to_results': path_to_results, 
+                              'path_to_data': path_to_data.joinpath('raw_no_baseline_all'), 
+                              'model_name': 'five_conv_two_dense',
+                              'save_path': pred_save_path,
+                              'save_name_signal_level': 'human_stage_five_conv_two_dense_signal.p',
+                              'save_name_epoch_level': 'human_stage_five_conv_two_dense_epoch.p'
+                              },
+                             {'path_to_model': path_to_model, 'path_to_results': path_to_results, 
+                              'path_to_data': path_to_data.joinpath('raw_no_baseline_all'), 
+                              'model_name': 'three_conv_two_dense',
+                              'save_path': pred_save_path,
+                              'save_name_signal_level': 'human_stage_three_conv_two_dense_signal.p',
+                              'save_name_epoch_level': 'human_stage_three_conv_two_dense_epoch.p'
+                              }]
+path_to_ground_truth_staging = path.joinpath('Stage_Dicts')
+save_path = path.joinpath('Apnea_Dicts')
+data_path_for_ground_truth = path_to_data.joinpath('raw_no_baseline_all')
+save_evaluation_name = 'apnea_ML_signal_level_and_epoch_level.csv'
+save_path_for_apnea_results = path.joinpath('Apnea_Results')
+
+evaluate_models_and_generate_predictions(
+    prediction_configurations = prediction_configurations,
+    path_to_ground_truth_staging = path_to_ground_truth_staging,
+    data_path_for_ground_truth = data_path_for_ground_truth,
+    save_path_apnea_dicts = save_path,
+    save_path_for_apnea_results = save_path_for_apnea_results,
+    save_evaluation_name = save_evaluation_name,
+    apnea_threshold_for_epoch = apnea_threshold_for_epoch)

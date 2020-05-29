@@ -77,7 +77,7 @@ def make_ground_truth_apnea_dict(path_to_data: str,
                 counter += increment
                 if counter >= len(signal_level_labels[ID]): break
     
-    with save_path.joinpath(ground_truth_staging_name).open('wb') as fout:
+    with save_path.joinpath('ground_truth_apnea_dict.p').open('wb') as fout:
         pickle.dump(epoch_level_labels, fout)
 
 def make_apnea_dict(signal_level_predictions_name: str, predictions_path: str,
@@ -169,15 +169,17 @@ def get_epoch_level_predictions(ID: str,
     # Adjust apnea_threshold_for_epoch to be in units of samples
     apnea_threshold_for_epoch *= sampling_rate
 
+    increment = sampling_rate*epoch_length
+
     epoch_level_predictions = {epoch: 'None' for epoch in stage_dict}
     counter = 0
     
     # Create signal-level and epoch-level representations
     for epoch in sorted(list(stage_dict.keys())):
         if stage_dict[epoch] in ['R','1','2','3']:
-            if predictions[counter:counter + sampling_rate*epoch_length].sum() >= apnea_threshold_for_epoch:
+            if predictions[counter:counter + increment].sum() >= apnea_threshold_for_epoch:
                 epoch_level_predictions[epoch] = 'A/H'
-                counter += sampling_rate*epoch_length
-                if counter >= len(predictions): break
+            counter += increment
+            if counter >= len(predictions): break
 
     return epoch_level_predictions
