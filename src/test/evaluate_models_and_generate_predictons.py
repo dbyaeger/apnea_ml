@@ -35,7 +35,7 @@ def evaluate_models_and_generate_predictions(
         'prediction_method_for_pipeline must be max_likelihood or viterbi!'
     
     # Create full-length ground-truth apnea labels for pipeline if they don't exist
-    if not save_path.joinpath('ground_truth_apnea_dict.p').exists():
+    if not save_path_apnea_dicts.joinpath('ground_truth_apnea_dict.p').exists():
         make_ground_truth_apnea_dict(path_to_data = data_path_for_ground_truth,
                                      path_to_ground_truth_staging = path_to_ground_truth_staging,
                                      ground_truth_staging_name ='ground_truth_stage_dict.p',
