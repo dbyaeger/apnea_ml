@@ -149,20 +149,21 @@ class HyperOptimizer():
         and trains. Returns metric result on cross val set.
         """
         print(f'Normalizer: {normalizer}')
-       
-        #Make generators
-        train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
-                                    data_path = self.data_path,
-                                    batch_size = 128,
-                                    mode="train",
-                                    context_samples=300,
-                                    shuffle = True,
-                                    desired_number_of_samples = 2.1e6)
         
-        # Fit normalizer
-        all_X = train_generator.get_all_data
-        normalizer.fit(all_X)
-        del all_X
+        if normalizer is not None:
+            #Make generators
+            train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
+                                        data_path = self.data_path,
+                                        batch_size = 128,
+                                        mode="train",
+                                        context_samples=300,
+                                        shuffle = True,
+                                        desired_number_of_samples = 2.1e6)
+            
+            # Fit normalizer
+            all_X = train_generator.get_all_data
+            normalizer.fit(all_X)
+            del all_X
         
         train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
                                     data_path = self.data_path,
