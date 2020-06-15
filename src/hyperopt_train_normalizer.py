@@ -159,8 +159,9 @@ class HyperOptimizer():
                                     desired_number_of_samples = 2.1e6)
         
         # Fit normalizer
-        all_X = train_generator.get_all_data()
+        all_X = train_generator.get_all_data
         normalizer.fit(all_X)
+        del all_X
         
         train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
                                     data_path = self.data_path,

@@ -179,16 +179,12 @@ class DataGeneratorApneaIDBatch(Sequence):
     def get_all_data(self):
         """Returns all data in samples"""
         all_data = np.zeros((len(self.samples),self.n_channels))
-        print(f'index: {self.channel_idx}')
         count = 0
         for ID in self.IDs:
-            sample_idx = [idx for (ID, idx, _) in self.samples if ID == ID]
-            print(f'sample_idx length: {len(sample_idx)}')
-            data = np.load(str(self.data_path.joinpath(ID + '.npy')))
-            print(f'Shape of spot: {all_data[count:count+len(sample_idx),:].shape}')
-            print(f'Shape of data: {data.shape}')
-            print(f'Shape of data subset: {data[sample_idx,self.channel_idx].shape}')
-            all_data[count:count+len(sample_idx),:] = data[sample_idx,self.channel_idx]
+            filtered_samples = list(filter(lambda x, ID=ID: x[0] == ID, self.samples))
+            sample_idx = [x[1] for x in filtered_samples]
+            data = np.load(str(self.data_path.joinpath(ID + '.npy')))[sample_idx,:]
+            all_data[count:count+len(sample_idx),:] = data[:,self.channel_idx]
             count += len(sample_idx)
         return all_data
             
