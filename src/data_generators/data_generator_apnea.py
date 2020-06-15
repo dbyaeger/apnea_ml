@@ -270,7 +270,7 @@ class DataGeneratorApnea(Sequence):
             sig = self.data[ID][start_idx:end_idx,self.channel_idx]
         
         if self.normalizer is not None:
-            sig = self.normaiizer.fit_transform(sig)
+            sig = self.normalizer.fit_transform(sig)
 
         if left_pad is None and right_pad is None:
             x = sig
