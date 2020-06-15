@@ -179,10 +179,13 @@ class DataGeneratorApneaIDBatch(Sequence):
     def get_all_data(self):
         """Returns all data in samples"""
         all_data = np.zeros((len(self.samples),self.n_channels))
+        print(f'index: {self.channel_idx}')
         count = 0
         for ID in self.IDs:
             sample_idx = [idx for (ID, idx, _) in self.samples if ID == ID]
-            all_data[count:count+len(sample_idx),:] = np.load(str(self.data_path.joinpath(ID + '.npy')))[sample_idx,self.channel_idx]
+            print(f'sample_idx: {sample_idx}')
+            data = np.load(str(self.data_path.joinpath(ID + '.npy')))
+            all_data[count:count+len(sample_idx),:] = data[sample_idx,self.channel_idx]
             count += len(sample_idx)
         return all_data
             
