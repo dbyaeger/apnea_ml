@@ -17,7 +17,7 @@ class DataGeneratorApneaIDBatch(Sequence):
                  n_classes = 2, desired_number_of_samples = 2.1e6, load_all_data: bool = True,
                  use_staging: bool = True, select_channels: list = 'all',
                  context_samples: int = 300, shuffle: bool = False, 
-                 single_ID = None, REM_only: bool = False):
+                 single_ID = None, REM_only: bool = False, normalizer: callable = None):
 
         assert mode in ['train', 'cv', 'test', 'val'], f'mode must be train, cv, val, or test, not {mode}'
 
@@ -42,6 +42,7 @@ class DataGeneratorApneaIDBatch(Sequence):
             targets = pickle.load(ta)
         
         self.targets = targets
+        self.normalizer = normalizer
         
         self.total_samples = sum([len(self.targets[ID]) for ID in self.targets])
             
@@ -173,15 +174,26 @@ class DataGeneratorApneaIDBatch(Sequence):
                 for idx in range(self.targets[ID].shape[0]):
                     if self.targets[ID][idx] >= 0:
                         self.samples.append((ID, idx, int(self.targets[ID][idx])))
-  
+    
+    @property
+    def get_all_data(self):
+        """Returns all data in samples"""
+        all_data = np.zeros((len(self.samples),self.n_channels))
+        count = 0
+        for ID in self.IDs:
+            sample_idx = [idx for (ID, idx, _) in self.samples if ID == ID]
+            all_data[count:count+len(sample_idx),:] = np.load(str(self.data_path.joinpath(ID + '.npy')))[sample_idx,self.channel_idx]
+            count += len(sample_idx)
+        return all_data
+            
     @property
     def labels(self):
-        "Returns labels for samples. Safeest to use when shuffle set to False"
+        """Returns labels for samples. Safeest to use when shuffle set to False"""
         return [x[-1] for x in self.samples]
     
     @property
     def all_targets(self):
-        "Returns targets even for where there is no prediction"
+        """Returns targets even for where there is no prediction"""
         return self.targets
     
     @property
@@ -280,6 +292,9 @@ class DataGeneratorApneaIDBatch(Sequence):
         x = np.zeros(self.dim)
         
         sig = self.data[start_idx:end_idx,self.channel_idx]
+        
+        if self.normalizer is not None:
+            sig = self.normalizer.transform(sig)
 
         if left_pad is None and right_pad is None:
             x = sig

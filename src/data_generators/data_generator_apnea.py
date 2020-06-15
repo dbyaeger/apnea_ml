@@ -17,7 +17,8 @@ class DataGeneratorApnea(Sequence):
                  n_classes = 2, desired_number_of_samples = 2.1e6,
                  use_staging = True, select_channels: list = 'all',
                  context_samples: int = 300, shuffle: bool = False,
-                 load_all_data: bool = True, single_ID = None, REM_only: bool = False):
+                 load_all_data: bool = True, single_ID = None, REM_only: bool = False,
+                 normalizer: callable = None):
 
         assert mode in ['train', 'cv', 'test', 'val'], f'mode must be train, cv, val, or test, not {mode}'
 
@@ -42,6 +43,7 @@ class DataGeneratorApnea(Sequence):
             targets = pickle.load(ta)
         
         self.targets = targets
+        self.normalizer = normalizer
         
         self.total_samples = sum([len(self.targets[ID]) for ID in self.targets])
             
@@ -266,6 +268,9 @@ class DataGeneratorApnea(Sequence):
             sig = np.load(file=str(self.data_path.joinpath(ID + '.npy')),mmap_mode='r')[start_idx:end_idx,self.channel_idx]
         elif self.load_all_data:
             sig = self.data[ID][start_idx:end_idx,self.channel_idx]
+        
+        if self.normalizer is not None:
+            sig = self.normaiizer.fit_transform(sig)
 
         if left_pad is None and right_pad is None:
             x = sig
