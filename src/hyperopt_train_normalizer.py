@@ -50,7 +50,7 @@ class HyperOptimizer():
     """
     def __init__(self, data_path: str, model_path: str, results_path: str,
                  model_specs_path: str, model_name: str,
-                 experiment_name: str = 'five_conv_two_dense_best_num',
+                 experiment_name: str = 'five_conv_two_dense_best_normalizer',
                  metric: callable = balanced_accuracy_score,
                  max_evals: int = 100,
                  variables: list = ['normalizer'],
