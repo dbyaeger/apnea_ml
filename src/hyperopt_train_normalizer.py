@@ -316,7 +316,8 @@ class HyperOptimizer():
             elif distributions[i] == 'quniform':
                 (low, high, q) = arguments[i]
                 space[variable] = quniform(variable,low,high,q)
-        print(space)
+            elif distributions[i] == 'choice':
+                space[variable] = choice(variable, arguments[i])
         return space
     
     @staticmethod
