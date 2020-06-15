@@ -148,6 +148,7 @@ class HyperOptimizer():
         """Builds a 1-conv layer, 2-dense layer neural net with specified parameters
         and trains. Returns metric result on cross val set.
         """
+        print(f'Normalizer: {normalizer}')
        
         #Make generators
         train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
