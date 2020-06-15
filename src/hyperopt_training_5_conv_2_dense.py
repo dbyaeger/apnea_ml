@@ -19,6 +19,9 @@ from data_generators.data_generator_apnea import DataGeneratorApnea, DataGenerat
 from hyperopt.hp import uniform, loguniform, quniform, lognormal, choice
 from hyperopt import STATUS_OK
 from hyperopt import Trials, tpe, fmin
+from sklearn.preprocessing import (MinMaxScaler, MaxAbsScaler, StandardScaler,
+                                   RobustScaler, Normalizer, QuantileTransformer,
+                                   PowerTransformer)
 
 class HyperOptimizer():
     """
@@ -54,18 +57,24 @@ class HyperOptimizer():
                                     'conv_filter_num_four', 'conv_filter_size_four',
                                     'conv_layer_lambda_five', 'conv_filter_num_five', 
                                     'conv_filter_size_five',
-                                    'fc_neurons', 'fc_layer_lambda'],
+                                    'fc_neurons', 'fc_layer_lambda', 'normalizer'],
                  distributions: list = ['loguniform','quniform','quniform', 'loguniform',
                                         'quniform','quniform','loguniform','quniform',
                                         'quniform','loguniform','quniform','quniform',
                                         'loguniform','quniform','quniform','quniform',
-                                        'loguniform'],
+                                        'loguniform','choice'],
                  arguments: list = [(1e-16,1),(32,256,32), (1,100,1),
                                     (1e-16,1),(32,256,32), (1,70,1),
                                     (1e-16,1), (32,256,32), (1,70,1),
                                     (1e-16,1), (32,256,32), (1,70,1),
                                     (1e-16,1), (32,256,32), (1,40,1),
-                                    (32,1024,32), (1e-12,1)]):
+                                    (32,1024,32), (1e-12,1),
+                                    (MinMaxScaler(), MaxAbsScaler(), StandardScaler(),
+                                   RobustScaler(), Normalizer(), None,
+                                   QuantileTransformer(output_distribution = 'uniform'),
+                                   QuantileTransformer(output_distribution = 'normal'),
+                                   PowerTransformer(standardize=True),
+                                   PowerTransformer(standardize=False))]):
 
         self.data_path = self.convert_to_path(data_path)
         self.model_path = self.convert_to_path(model_path)
@@ -160,29 +169,45 @@ class HyperOptimizer():
                  conv_layer_lambda_three, conv_filter_num_three, conv_filter_size_three,
                  conv_layer_lambda_four, conv_filter_num_four, conv_filter_size_four,
                  conv_layer_lambda_five, conv_filter_num_five, conv_filter_size_five,
-                 fc_neurons, fc_layer_lambda):
+                 fc_neurons, fc_layer_lambda, normalizer):
         """Builds a 1-conv layer, 2-dense layer neural net with specified parameters
         and trains. Returns metric result on cross val set.
         """
-       
+        print(f'Normalizer: {normalizer}')
+        
+        if normalizer is not None:
+            #Make generators
+            train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
+                                        data_path = self.data_path,
+                                        batch_size = 128,
+                                        mode="train",
+                                        context_samples=300,
+                                        shuffle = True,
+                                        desired_number_of_samples = 2.1e6)
+            
+            # Fit normalizer
+            all_X = train_generator.get_all_data
+            normalizer.fit(all_X)
+            del all_X
         #Make generators
         train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
                                     mode="train",
+                                    normalizer = normalizer,
                                     context_samples=300,
                                     shuffle = True,
                                     desired_number_of_samples = 2.1e6)
         
         cv_generator =  DataGeneratorApneaRandomSubset(
-                                    percentage_to_sample = 0.2,
                                     n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
+                                    normalizer = normalizer,
                                     mode="cv",
                                     context_samples=300,
-                                    load_all_data = True,
-                                    shuffle=True)
+                                    shuffle = True,
+                                    load_all_data = True)
         # Print class weights
         print(f'Class weights for training: {train_generator.class_weights}')
         
