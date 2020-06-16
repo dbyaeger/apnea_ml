@@ -264,10 +264,11 @@ class DataGeneratorApnea(Sequence):
             end_idx = end_sig_idx
         x = np.zeros(self.dim)
         
+        #self.channel_idx
         if not self.load_all_data:
-            sig = np.load(file=str(self.data_path.joinpath(ID + '.npy')),mmap_mode='r')[start_idx:end_idx,self.channel_idx]
+            sig = np.load(file=str(self.data_path.joinpath(ID + '.npy')),mmap_mode='r')[start_idx:end_idx,:]
         elif self.load_all_data:
-            sig = self.data[ID][start_idx:end_idx,self.channel_idx]
+            sig = self.data[ID][start_idx:end_idx,:]
         
         if self.normalizer is not None:
             sig = self.normalizer.transform(sig)

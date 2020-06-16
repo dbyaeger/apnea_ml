@@ -46,7 +46,7 @@ class HyperOptimizer():
     parameters.
     """
     def __init__(self, data_path: str, model_path: str, results_path: str,
-                 experiment_name: str = 'five_conv_two_dense_w_normalizer',
+                 experiment_name: str = 'five_conv_two_dense_w_normalizeriknp'{',
                  metric: callable = balanced_accuracy_score,
                  max_evals: int = 100,
                  variables: list = ['conv_layer_lambda_one', 'conv_filter_num_one',
