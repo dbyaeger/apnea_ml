@@ -294,9 +294,8 @@ class DataGeneratorApneaIDBatch(Sequence):
         
         x = np.zeros(self.dim)
         
-        # Determine if error is here by dropping self.channel_idx
-        #sig = self.data[start_idx:end_idx,self.channel_idx]
         sig = self.data[start_idx:end_idx,:]
+        sig = sig[:,self.channel_idx]
         
         if self.normalizer is not None:
             sig = self.normalizer.transform(sig)

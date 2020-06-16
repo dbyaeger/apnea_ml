@@ -20,6 +20,9 @@ from data_generators.data_generator_apnea import DataGeneratorApnea, DataGenerat
 from hyperopt.hp import uniform, loguniform, quniform, lognormal, choice
 from hyperopt import STATUS_OK
 from hyperopt import Trials, tpe, fmin
+from sklearn.preprocessing import (MinMaxScaler, MaxAbsScaler, StandardScaler,
+                                   RobustScaler, Normalizer, QuantileTransformer,
+                                   PowerTransformer)
 
 class HyperOptimizer():
     """
@@ -47,13 +50,19 @@ class HyperOptimizer():
     """
     def __init__(self, data_path: str, model_path: str, results_path: str,
                  model_specs_path: str, model_name: str,
-                 experiment_name: str = 'five_conv_two_dense_best_channels2',
+                 experiment_name: str = 'five_conv_two_dense_best_channels3',
                  metric: callable = balanced_accuracy_score,
                  max_evals: int = 100,
-                 variables: list = ['Abdomen', 'Airflow', 'Chest', 'ECG', 'P_Flo', 'SpO2'],
-                 distributions: list = ['choice','choice','choice','choice','choice','choice'],
+                 variables: list = ['Abdomen', 'Airflow', 'Chest', 'ECG', 'P_Flo', 'SpO2', 'normalizer'],
+                 distributions: list = ['choice','choice','choice','choice','choice','choice','choice'],
                  arguments: list = [(True,False),(True,False),(True,False),(True,False),
-                                    (True,False),(True,False)]):
+                                    (True,False),(True,False),
+                                   (MinMaxScaler(), MaxAbsScaler(), StandardScaler(),
+                                   RobustScaler(), Normalizer(), None,
+                                   QuantileTransformer(output_distribution = 'uniform'),
+                                   QuantileTransformer(output_distribution = 'normal'),
+                                   PowerTransformer(standardize=True),
+                                   PowerTransformer(standardize=False))]):
 
         self.data_path = self.convert_to_path(data_path)
         self.model_path = self.convert_to_path(model_path)
@@ -135,7 +144,7 @@ class HyperOptimizer():
         with self.trial_path.open('wb') as fh:
             pickle.dump(self.bayes_trials, fh)
     
-    def run_with(self, Abdomen, Airflow, Chest, ECG, P_Flo, SpO2):
+    def run_with(self, Abdomen, Airflow, Chest, ECG, P_Flo, SpO2, normalizer):
         """Builds a 1-conv layer, 2-dense layer neural net with specified parameters
         and trains. Returns metric result on cross val set.
         """
@@ -147,12 +156,30 @@ class HyperOptimizer():
         if P_Flo: select_channels.append('P-Flo')
         if SpO2: select_channels.append('SpO2')
         
+        print(f'Normalizer: {normalizer}')
+        
+        if normalizer is not None:
+            #Make generators
+            train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
+                                        data_path = self.data_path,
+                                        batch_size = 128,
+                                        mode="train",
+                                        context_samples=300,
+                                        shuffle = True,
+                                        desired_number_of_samples = 2.1e6)
+            
+            # Fit normalizer
+            all_X = train_generator.get_all_data
+            normalizer.fit(all_X)
+            del all_X
+        
        
         #Make generators
         train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
                                     mode="train",
+                                    normalizer = normalizer,
                                     context_samples=300,
                                     select_channels=select_channels,
                                     shuffle = True,
@@ -163,6 +190,7 @@ class HyperOptimizer():
                                     data_path = self.data_path,
                                     batch_size = 128,
                                     select_channels=select_channels,
+                                    normalizer = normalizer,
                                     mode="cv",
                                     context_samples=300,
                                     shuffle = True,
@@ -225,6 +253,7 @@ class HyperOptimizer():
                                     batch_size = 128,
                                     mode="cv",
                                     context_samples=300,
+                                    normalizer = normalizer,
                                     select_channels=select_channels,
                                     shuffle=False,
                                     load_all_data = True)
