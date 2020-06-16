@@ -152,7 +152,7 @@ class HyperOptimizer():
         
         if normalizer is not None:
             #Make generators
-            train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
+            train_generator = DataGeneratorApnea(n_classes = 2,
                                         data_path = self.data_path,
                                         batch_size = 128,
                                         mode="train",
