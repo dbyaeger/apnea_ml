@@ -46,7 +46,7 @@ class HyperOptimizer():
     parameters.
     """
     def __init__(self, data_path: str, model_path: str, results_path: str,
-                 experiment_name: str = 'five_conv_two_dense_w_normalizeriknp'{',
+                 experiment_name: str = 'five_conv_two_dense_w_normalizer',
                  metric: callable = balanced_accuracy_score,
                  max_evals: int = 100,
                  variables: list = ['conv_layer_lambda_one', 'conv_filter_num_one',
@@ -198,8 +198,8 @@ class HyperOptimizer():
                                     context_samples=300,
                                     shuffle = True,
                                     desired_number_of_samples = 2.1e6)
-        
-        cv_generator =  DataGeneratorApneaRandomSubset(
+        #DataGeneratorApneaRandomSubset
+        cv_generator =  DataGeneratorApnea(
                                     n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
