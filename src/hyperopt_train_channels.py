@@ -198,12 +198,12 @@ class HyperOptimizer():
         # Print class weights
         print(f'Class weights for training: {train_generator.class_weights}')
         print(f'Training data length: {len(train_generator)}')
-        print(f'Select train channel list: {train_generator.select_channels}')
-        print(f'Channel train index: {train_generator.channel_idx}')
-        print(f'Select val channel list: {cv_generator.select_channels}')
-        print(f'Channel val index: {cv_generator.channel_idx}')
-        print(f'Sample train data: {train_generator.__getitem__(0)[0]}')
-        print(f'Sample val data: {cv_generator.__getitem__(0)[0]}')
+#        print(f'Select train channel list: {train_generator.select_channels}')
+#        print(f'Channel train index: {train_generator.channel_idx}')
+#        print(f'Select val channel list: {cv_generator.select_channels}')
+#        print(f'Channel val index: {cv_generator.channel_idx}')
+#        print(f'Sample train data: {train_generator.__getitem__(0)[0]}')
+#        print(f'Sample val data: {cv_generator.__getitem__(0)[0]}')
         
         
         # Set parameters

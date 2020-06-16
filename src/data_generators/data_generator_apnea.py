@@ -264,11 +264,12 @@ class DataGeneratorApnea(Sequence):
             end_idx = end_sig_idx
         x = np.zeros(self.dim)
         
-        #self.channel_idx
         if not self.load_all_data:
             sig = np.load(file=str(self.data_path.joinpath(ID + '.npy')),mmap_mode='r')[start_idx:end_idx,:]
         elif self.load_all_data:
             sig = self.data[ID][start_idx:end_idx,:]
+        
+        sig = sig[:,self.channel_idx]
         
         if self.normalizer is not None:
             sig = self.normalizer.transform(sig)
@@ -283,7 +284,7 @@ class DataGeneratorApnea(Sequence):
         # Data quality checks
         #assert not np.any(np.isnan(x)), "Data contains a NaN value!"
         #assert not np.any(np.isinf(x)), "Data contains an infinity value!"
-        assert label >= 0, f'{label} less than zero!'
+        #assert label >= 0, f'{label} less than zero!'
         y = np.eye(self.n_classes)[int(label)]
         #assert x.shape == self.dim, f"x shape {x.shape} does not match expected shape {self.dim}"
         return x,y
