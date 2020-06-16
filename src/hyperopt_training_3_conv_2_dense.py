@@ -155,13 +155,13 @@ class HyperOptimizer():
         """
        
         #Make generators
-        train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
+        train_generator = DataGeneratorApnea(n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
                                     mode="train",
                                     context_samples=300,
                                     shuffle = True,
-                                    desired_number_of_samples = 2.1e6)
+                                    desired_number_of_samples = 0.5e6)
         
         cv_generator =  DataGeneratorApneaRandomSubset(
                                     percentage_to_sample = 0.2,
