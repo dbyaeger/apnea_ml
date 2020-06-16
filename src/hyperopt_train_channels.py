@@ -166,6 +166,8 @@ class HyperOptimizer():
                                         mode="train",
                                         context_samples=300,
                                         shuffle = True,
+                                        normalizer = None,
+                                        select_channels=select_channels,
                                         desired_number_of_samples = 2.1e6)
             
             # Fit normalizer
