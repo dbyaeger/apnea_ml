@@ -16,7 +16,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 from tensorflow.keras.models import load_model
 from sklearn.metrics import balanced_accuracy_score
 from data_generators.data_generator_apnea_ID_batch import DataGeneratorApneaIDBatch 
-from data_generators.data_generator_apnea_ID_batch2 import DataGeneratorApneaIDBatch2
+#from data_generators.data_generator_apnea_ID_batch2 import DataGeneratorApneaIDBatch2
 from data_generators.data_generator_apnea import DataGeneratorApnea, DataGeneratorApneaRandomSubset
 from hyperopt.hp import uniform, loguniform, quniform, lognormal, choice
 from hyperopt import STATUS_OK
@@ -166,7 +166,7 @@ class HyperOptimizer():
             normalizer.fit(all_X)
             del all_X
         
-        train_generator = DataGeneratorApneaIDBatch2(n_classes = 2,
+        train_generator = DataGeneratorApneaIDBatch(n_classes = 2,
                                     data_path = self.data_path,
                                     batch_size = 128,
                                     mode="train",

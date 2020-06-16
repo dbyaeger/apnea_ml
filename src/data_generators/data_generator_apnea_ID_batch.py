@@ -257,6 +257,7 @@ class DataGeneratorApneaIDBatch(Sequence):
         
         # Get indices of samples and randomly sample
         ID_samples = list(filter(lambda x: x[0] == ID, self.samples))
+        np.random.shuffle(ID_samples)
         ID_samples = ID_samples[:self.batch_size]
     
         X = np.zeros((self.batch_size, *self.dim), dtype=np.float64)
